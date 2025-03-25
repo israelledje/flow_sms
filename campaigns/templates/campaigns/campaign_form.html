@@ -1,0 +1,593 @@
+{% extends "base.html" %}
+{% block page_title %}Campagnes{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-6   " >
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Formulaire principal -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h1 class="text-xl font-medium text-gray-900 mb-6">
+                    {% if object %}Modifier la Campagne{% else %}Nouvelle Campagne personnalisée{% endif %}
+                </h1>
+
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Champ caché pour les contacts validés -->
+                    <input type="hidden" name="contact_numbers" id="contact_numbers_hidden" value="">
+                    
+                    <!-- Messages d'erreur -->
+                    {% if form.errors %}
+                    <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                        <h3 class="font-medium">Veuillez corriger les erreurs suivantes :</h3>
+                        <ul class="mt-1.5 ml-4 list-disc list-inside">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Titre Campagne -->
+                    <div class="space-y-2">
+                        <label for="id_name" class="block text-sm font-medium text-gray-700">Titre Campagne</label>
+                        <input type="text" name="name" id="id_name" required 
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white" 
+                            placeholder="Libelle ..."
+                            {% if form.name.value %}value="{{ form.name.value }}"{% endif %}>
+                    </div>
+
+                    <!-- Expéditeur -->
+                    <div class="space-y-2">
+                        <label for="id_sender" class="block text-sm font-medium text-gray-700">Expéditeur</label>
+                        <select name="sender" id="id_sender" required 
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white">
+                            <option value="">Sélectionnez un expéditeur</option>
+                            {% for sender in senders %}
+                            <option value="{{ sender.id }}" {% if form.sender.value == sender.id %}selected{% endif %}>{{ sender.name }}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        <!-- Débogage des expéditeurs -->
+                        <div class="mt-2 p-2 bg-gray-100 rounded text-xs">
+                            <p><strong>Débogage - Expéditeurs disponibles:</strong></p>
+                            <ul>
+                                {% for sender in senders %}
+                                <li>ID: {{ sender.id }} - Nom: {{ sender.name }} - Statut: {{ sender.status }}</li>
+                                {% empty %}
+                                <li>Aucun expéditeur approuvé trouvé!</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Message -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label for="id_message_content" class="block text-sm font-medium text-gray-700">Message</label>
+                            <div class="flex items-center space-x-2">
+                                <button type="button" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md text-sm font-medium text-gray-700">
+                                    Personnaliser
+                                </button>
+                                <select class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <option>Choisir le Modèle</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <textarea name="message_content" id="id_message_content" rows="6" required 
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+                                placeholder="Contenu du message...">{% if form.message_content.value %}{{ form.message_content.value }}{% endif %}</textarea>
+                            <div id="characterCountContainer" class="absolute bottom-2 right-2 text-sm bg-gray-100 px-2 py-1 rounded-md">
+                            <span id="characterCount" class="text-sm">0</span> caractères (max 160)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date d'envoi -->
+                    <div class="space-y-2">
+                        <label for="id_scheduled_date" class="block text-sm font-medium text-gray-700">Date d'envoi (Optionnel)</label>
+                        <input type="datetime-local" name="scheduled_date" id="id_scheduled_date" 
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white" 
+                            placeholder="Date & Heure de début de la campagne"
+                            {% if form.scheduled_date.value %}value="{{ form.scheduled_date.value|date:'Y-m-d\TH:i' }}"{% endif %}>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="flex justify-start space-x-3 pt-4">
+                        <button type="submit" name="action" value="save" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>
+                            {% if object %}Mettre à jour{% else %}Enregistrer{% endif %}
+                        </button>
+                        <button type="submit" name="action" value="start" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <i class="fas fa-play mr-2"></i>
+                            Démarrer
+                        </button>
+                        <a href="{% url 'campaigns:campaign_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fas fa-times mr-2"></i>
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Panneau latéral -->
+        <div class="lg:col-span-1">
+            <!-- Import de contacts -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 class="text-base font-medium text-gray-900 mb-4">Liste des contacts</h2>
+                
+                <div class="space-y-4">
+                    <!-- Champ pour numéros séparés par virgules -->
+                    <div>
+                        <label for="contact-numbers" class="block text-sm font-medium text-gray-700 mb-1">Numéros de téléphone</label>
+                        <textarea id="contact-numbers" rows="5" 
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+                            placeholder="Ex: 22556778899, 22590123456..."></textarea>
+                        <p class="mt-1 text-xs text-gray-500">Séparez les numéros par des virgules</p>
+                    </div>
+                    
+                    <!-- Boutons d'actions -->
+                    <div class="flex items-center space-x-2">
+                        <button type="button" id="open-import-modal" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
+                            <i class="fas fa-file-import mr-1"></i> Importer un fichier
+                        </button>
+                        <button type="button" id="validate-contacts" class="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700">
+                            <i class="fas fa-check mr-1"></i> Valider
+                        </button>
+                    </div>
+                    
+                    <!-- Zone de notification pour l'import -->
+                    <div id="import-feedback" class="hidden rounded-md mt-4 p-3 text-sm"></div>
+                </div>
+            </div>
+
+            <!-- Récapitulatif de la campagne -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-base font-medium text-gray-900 mb-4">Récapitulatif de la campagne</h2>
+                <div class="space-y-3">
+                    <!-- Informations de la campagne -->
+                    <div class="p-3 bg-gray-50 rounded-md mb-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Informations</h3>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <span class="text-gray-600">Titre:</span>
+                            <span class="font-medium" id="recap_title">-</span>
+                            <span class="text-gray-600">Expéditeur:</span>
+                            <span class="font-medium" id="recap_sender">-</span>
+                            <span class="text-gray-600">Programmé pour:</span>
+                            <span class="font-medium" id="recap_scheduled">Immédiat</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistiques des contacts -->
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Destinataires</h3>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm text-gray-600">Total Numéros</span>
+                        <span id="total_numbers" class="text-sm font-medium bg-gray-100 px-2 py-1 rounded-full">0</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm text-gray-600">Numéros Valides</span>
+                        <span id="valid_numbers" class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">0</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm text-gray-600">Numéros Invalides</span>
+                        <span id="invalid_numbers" class="text-sm font-medium bg-gray-100 px-2 py-1 rounded-full">0</span>
+                    </div>
+                    
+                    <!-- Statistiques des SMS -->
+                    <h3 class="text-sm font-medium text-gray-700 mb-2 mt-4">Informations SMS</h3>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm text-gray-600">SMS/Contact</span>
+                        <span id="sms_per_contact" class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">0</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm text-gray-600">Total SMS</span>
+                        <span id="total_sms" class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">0</span>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium">Coût estimé</span>
+                        <span id="estimated_cost" class="text-sm font-medium">0 SMS</span>
+                    </div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <span class="text-sm font-medium">Solde disponible</span>
+                        <span class="text-2xl font-bold">6 SMS</span>
+                    </div>
+                    
+                    <!-- Avertissement avant envoi -->
+                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p class="text-sm text-yellow-700">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Vérifiez les informations ci-dessus avant de démarrer la campagne. Une fois lancée, l'opération ne pourra pas être annulée.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale d'import de fichier -->
+<div id="import-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-modal="true" role="dialog">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+            <div>
+                <div class="mt-3 text-center sm:mt-0 sm:text-left">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                        Importer des contacts
+                    </h3>
+                    <div class="mt-4">
+                        <p class="text-sm text-gray-500 mb-4">
+                            Sélectionnez un fichier Excel (.xlsx) ou CSV contenant vos contacts. 
+                            <br>La première colonne doit contenir les numéros de téléphone.
+                        </p>
+                        
+                        <div class="mt-2">
+                            <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2">
+                                Fichier de contacts
+                            </label>
+                            <input id="file-upload" type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
+                        
+                        <div id="upload-status" class="mt-3 hidden">
+                            <div class="flex items-center">
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                                </div>
+                                <span id="progress-text" class="ml-2 text-sm text-gray-500">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                <button type="button" id="process-file" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:col-start-2 sm:text-sm">
+                    Importer
+                </button>
+                <button type="button" id="close-modal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de notification -->
+<div id="toast-notification" class="fixed bottom-4 right-4 z-50 hidden">
+    <div class="flex items-center bg-white border border-gray-100 rounded-lg shadow-lg px-4 py-3">
+        <div id="toast-icon" class="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full">
+            <i id="toast-icon-type" class="text-white"></i>
+        </div>
+        <div class="ml-3">
+            <p id="toast-title" class="text-sm font-medium text-gray-900"></p>
+            <p id="toast-message" class="text-sm text-gray-500"></p>
+        </div>
+        <button type="button" id="close-toast" class="ml-4 text-gray-400 hover:text-gray-500">
+            <span class="sr-only">Fermer</span>
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Script pour gérer l'import et les interactions -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Éléments DOM
+        const importModal = document.getElementById('import-modal');
+        const openImportModalBtn = document.getElementById('open-import-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const fileUpload = document.getElementById('file-upload');
+        const processFileBtn = document.getElementById('process-file');
+        const contactNumbersField = document.getElementById('contact-numbers');
+        const validateContactsBtn = document.getElementById('validate-contacts');
+        const importFeedback = document.getElementById('import-feedback');
+        const uploadStatus = document.getElementById('upload-status');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const toast = document.getElementById('toast-notification');
+        const toastTitle = document.getElementById('toast-title');
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+        const toastIconType = document.getElementById('toast-icon-type');
+        const closeToastBtn = document.getElementById('close-toast');
+        
+        // Récap éléments
+        const totalNumbers = document.getElementById('total_numbers');
+        const validNumbers = document.getElementById('valid_numbers');
+        const invalidNumbers = document.getElementById('invalid_numbers');
+        const smsPerContact = document.getElementById('sms_per_contact');
+        const totalSms = document.getElementById('total_sms');
+        const estimatedCost = document.getElementById('estimated_cost');
+        
+        // Formulaire éléments pour le récap
+        const titleField = document.getElementById('id_name');
+        const senderField = document.getElementById('id_sender');
+        const scheduledDateField = document.getElementById('id_scheduled_date');
+        const messageField = document.getElementById('id_message_content');
+        const recapTitle = document.getElementById('recap_title');
+        const recapSender = document.getElementById('recap_sender');
+        const recapScheduled = document.getElementById('recap_scheduled');
+        
+        // Ouvrir la modale
+        openImportModalBtn.addEventListener('click', function() {
+            importModal.classList.remove('hidden');
+        });
+        
+        // Fermer la modale
+        closeModalBtn.addEventListener('click', function() {
+            importModal.classList.add('hidden');
+            fileUpload.value = '';
+            uploadStatus.classList.add('hidden');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+        });
+        
+        // Traitement du fichier
+        processFileBtn.addEventListener('click', function() {
+            if (!fileUpload.files || fileUpload.files.length === 0) {
+                showToast('Erreur', 'Veuillez sélectionner un fichier', 'error');
+                return;
+            }
+            
+            const file = fileUpload.files[0];
+            uploadStatus.classList.remove('hidden');
+            
+            // Préparation pour l'envoi du fichier au serveur
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Simuler le début du traitement
+            progressBar.style.width = '10%';
+            progressText.textContent = '10%';
+            
+            // Envoi du fichier au serveur
+            fetch('{% url "campaigns:contact_import" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            })
+            .then(response => {
+                // Simuler la progression pendant le chargement
+                progressBar.style.width = '50%';
+                progressText.textContent = '50%';
+                
+                if (!response.ok) {
+                    throw new Error(`Erreur serveur: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Traitement terminé
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+                
+                if (data.status === 'success') {
+                    const validNumbersList = data.data.valid_numbers;
+                    
+                    // Ajouter les numéros au champ de texte
+                    if (contactNumbersField.value.trim() !== '') {
+                        contactNumbersField.value += ', ' + validNumbersList.join(', ');
+                    } else {
+                        contactNumbersField.value = validNumbersList.join(', ');
+                    }
+                    
+                    // Mettre à jour le champ caché avec les numéros validés
+                    document.getElementById('contact_numbers_hidden').value = contactNumbersField.value;
+                    
+                    // Mise à jour des statistiques
+                    totalNumbers.textContent = data.data.total_numbers;
+                    validNumbers.textContent = data.data.valid_count;
+                    invalidNumbers.textContent = data.data.invalid_count;
+                    
+                    // Calcul du nombre de SMS par message
+                    const messageLength = messageField.value.length;
+                    const smsCount = Math.ceil(messageLength / 160) || 1;
+                    smsPerContact.textContent = smsCount;
+                    
+                    // Total SMS
+                    const totalSmsCount = data.data.valid_count * smsCount;
+                    totalSms.textContent = totalSmsCount;
+                    estimatedCost.textContent = totalSmsCount + ' SMS';
+                    
+                    // Mettre à jour le récapitulatif
+                    updateCampaignRecap();
+                    
+                    // Fermer la modale et afficher le toast
+                    importModal.classList.add('hidden');
+                    showToast(
+                        'Import réussi', 
+                        `${data.data.valid_count} numéros valides importés (${data.data.invalid_count} invalides, ${data.data.duplicate_count} doublons)`, 
+                        'success'
+                    );
+                    
+                    // Afficher le feedback
+                    importFeedback.textContent = `${data.data.valid_count} numéros importés avec succès`;
+                    importFeedback.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+                    importFeedback.classList.add('bg-green-100', 'text-green-700');
+                } else {
+                    // Erreur dans le traitement côté serveur
+                    showToast('Erreur', data.message, 'error');
+                    importFeedback.textContent = data.message;
+                    importFeedback.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                    importFeedback.classList.add('bg-red-100', 'text-red-700');
+                }
+            })
+            .catch(error => {
+                // Erreur réseau ou JSON
+                console.error('Erreur:', error);
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+                
+                showToast('Erreur', `Problème lors de l'import: ${error.message}`, 'error');
+                importFeedback.textContent = `Erreur: ${error.message}`;
+                importFeedback.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                importFeedback.classList.add('bg-red-100', 'text-red-700');
+            })
+            .finally(() => {
+                // Masquer la barre de progression après un court délai
+                setTimeout(() => {
+                    uploadStatus.classList.add('hidden');
+                }, 1000);
+            });
+        });
+        
+        // Validation des contacts saisis manuellement
+        validateContactsBtn.addEventListener('click', function() {
+            const inputText = contactNumbersField.value.trim();
+            
+            if (inputText === '') {
+                showToast('Attention', 'Aucun numéro saisi', 'warning');
+                return;
+            }
+            
+            // Extraire les numéros séparés par virgules
+            const numbers = inputText.split(',').map(num => num.trim()).filter(num => num);
+            
+            if (numbers.length === 0) {
+                showToast('Attention', 'Aucun numéro valide trouvé', 'warning');
+                return;
+            }
+            
+            // Mise à jour du récapitulatif
+            updateContactStats(numbers);
+            
+            // Mettre à jour le champ caché avec les numéros validés
+            document.getElementById('contact_numbers_hidden').value = numbers.join(',');
+            
+            // Afficher le feedback
+            importFeedback.textContent = `${numbers.length} numéros validés`;
+            importFeedback.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+            importFeedback.classList.add('bg-green-100', 'text-green-700');
+            
+            showToast('Validation réussie', `${numbers.length} numéros validés`, 'success');
+        });
+        
+        // Mise à jour du récapitulatif de la campagne
+        function updateContactStats(numbers) {
+            // Nombre total
+            totalNumbers.textContent = numbers.length;
+            
+            // Validation basique (numéros de 11-12 chiffres commençant par 237)
+            const validPhoneNumbers = numbers.filter(num => /^237\d{8,9}$/.test(num));
+            validNumbers.textContent = validPhoneNumbers.length;
+            
+            // Numéros invalides
+            invalidNumbers.textContent = numbers.length - validPhoneNumbers.length;
+            
+            // Calcul du nombre de SMS par message
+            const messageLength = messageField.value.length;
+            const smsCount = Math.ceil(messageLength / 160) || 1;
+            smsPerContact.textContent = smsCount;
+            
+            // Total SMS
+            const totalSmsCount = validPhoneNumbers.length * smsCount;
+            totalSms.textContent = totalSmsCount;
+            estimatedCost.textContent = totalSmsCount + ' SMS';
+            
+            // Mettre à jour les infos du récap
+            updateCampaignRecap();
+        }
+        
+        // Mise à jour des informations de campagne dans le récap
+        function updateCampaignRecap() {
+            // Titre
+            recapTitle.textContent = titleField.value || '-';
+            
+            // Expéditeur
+            const senderSelect = senderField;
+            if (senderSelect.selectedIndex !== -1) {
+                recapSender.textContent = senderSelect.options[senderSelect.selectedIndex].text;
+            } else {
+                recapSender.textContent = '-';
+            }
+            
+            // Date programmée
+            if (scheduledDateField.value) {
+                const scheduledDate = new Date(scheduledDateField.value);
+                recapScheduled.textContent = scheduledDate.toLocaleString('fr-FR');
+            } else {
+                recapScheduled.textContent = 'Immédiat';
+            }
+        }
+        
+        // Écouter les changements dans le formulaire pour mettre à jour le récap
+        [titleField, senderField, scheduledDateField, messageField].forEach(field => {
+            field.addEventListener('change', updateCampaignRecap);
+            field.addEventListener('input', updateCampaignRecap);
+        });
+        
+        // Initialiser le récap
+        updateCampaignRecap();
+        
+        // Fonction pour afficher les toasts
+        function showToast(title, message, type) {
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // Configurer l'apparence selon le type
+            toastIcon.className = 'flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full';
+            
+            if (type === 'success') {
+                toastIcon.classList.add('bg-green-500');
+                toastIconType.className = 'fas fa-check text-white';
+            } else if (type === 'error') {
+                toastIcon.classList.add('bg-red-500');
+                toastIconType.className = 'fas fa-times text-white';
+            } else if (type === 'warning') {
+                toastIcon.classList.add('bg-yellow-500');
+                toastIconType.className = 'fas fa-exclamation text-white';
+            } else {
+                toastIcon.classList.add('bg-blue-500');
+                toastIconType.className = 'fas fa-info text-white';
+            }
+            
+            // Afficher le toast
+            toast.classList.remove('hidden');
+            
+            // Masquer après 5 secondes
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 5000);
+        }
+        
+        // Fermer le toast
+        closeToastBtn.addEventListener('click', function() {
+            toast.classList.add('hidden');
+        });
+        
+        // Compteur de caractères pour le message
+        const messageContentField = document.getElementById('id_message_content');
+        const characterCount = document.getElementById('characterCount');
+        
+        messageContentField.addEventListener('input', function() {
+            const count = this.value.length;
+            characterCount.textContent = count;
+            
+            // Mise à jour du nombre de SMS par message
+            const smsCount = Math.ceil(count / 160) || 1;
+            smsPerContact.textContent = smsCount;
+            
+            // Mettre à jour le total des SMS si des contacts sont présents
+            if (validNumbers.textContent !== '0') {
+                const validNumbersCount = parseInt(validNumbers.textContent);
+                totalSms.textContent = validNumbersCount * smsCount;
+                estimatedCost.textContent = (validNumbersCount * smsCount) + ' SMS';
+            }
+        });
+    });
+</script>
+
+{% endblock %}

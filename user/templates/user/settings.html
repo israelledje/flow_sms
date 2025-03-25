@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Paramètres - FLOW SMS{% endblock %}
+{% block page_title %}Paramètres{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Cartes de paramètres -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Sender IDs -->
+        <a href="{% url 'user:sender_id_list' %}" class="block">
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                        <i class="fa-solid fa-signature text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Sender IDs</h3>
+                <p class="text-gray-500">Gérez vos identifiants d'expéditeur pour vos campagnes SMS.</p>
+            </div>
+        </a>
+
+        <!-- Profil -->
+        <a href="{% url 'user:profile' %}" class="block">
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                        <i class="fa-solid fa-user text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Profil</h3>
+                <p class="text-gray-500">Modifiez vos informations personnelles et professionnelles.</p>
+            </div>
+        </a>
+
+        <!-- Sécurité -->
+        <a href="{% url 'user:password_change' %}" class="block">
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                        <i class="fa-solid fa-lock text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Sécurité</h3>
+                <p class="text-gray-500">Modifiez votre mot de passe et gérez la sécurité de votre compte.</p>
+            </div>
+        </a>
+
+        {% if user.is_staff %}
+        <!-- Administration des Sender IDs -->
+        <a href="{% url 'user:sender_id_admin_list' %}" class="block">
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                        <i class="fa-solid fa-shield-halved text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Administration des Sender IDs</h3>
+                <p class="text-gray-500">Gérez et approuvez les demandes de Sender IDs des utilisateurs.</p>
+            </div>
+        </a>
+        {% endif %}
+
+        <!-- Désactivation du compte -->
+        <a href="{% url 'user:account_deactivate' %}" class="block">
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-red-500 transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 group-hover:bg-red-600 group-hover:text-white transition-all duration-200">
+                        <i class="fa-solid fa-user-slash text-xl"></i>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-red-500 transition-colors duration-200"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Désactiver le compte</h3>
+                <p class="text-gray-500">Désactivez votre compte et supprimez vos données.</p>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

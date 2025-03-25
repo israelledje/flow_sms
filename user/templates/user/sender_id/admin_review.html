@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Examiner {{ sender_id.name }} - FLOW SMS{% endblock %}
+{% block page_title %}Examiner le Sender ID{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+        <!-- Informations sur le Sender ID -->
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-900">{{ sender_id.name }}</h2>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    {% if sender_id.status == 'APPROUVE' %}bg-green-100 text-green-800
+                    {% elif sender_id.status == 'EN_ATTENTE' %}bg-yellow-100 text-yellow-800
+                    {% else %}bg-red-100 text-red-800{% endif %}">
+                    {{ sender_id.get_status_display }}
+                </span>
+            </div>
+            
+            <div class="mt-6 border-t border-gray-100 pt-6">
+                <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Utilisateur</dt>
+                        <dd class="mt-1">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    {% if sender_id.user.profile_photo %}
+                                    <img class="h-10 w-10 rounded-full" src="{{ sender_id.user.profile_photo.url }}" alt="">
+                                    {% else %}
+                                    <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <i class="fa-solid fa-user text-gray-500"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ sender_id.user.get_full_name }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        {{ sender_id.user.email }}
+                                    </div>
+                                </div>
+                            </div>
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Date de création</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ sender_id.date_creation|date:"d/m/Y H:i" }}</dd>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <dt class="text-sm font-medium text-gray-500">Description</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ sender_id.description }}</dd>
+                    </div>
+
+                    {% if sender_id.date_approbation %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Date d'approbation</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ sender_id.date_approbation|date:"d/m/Y H:i" }}</dd>
+                    </div>
+                    {% endif %}
+
+                    {% if sender_id.rejection_reason %}
+                    <div class="sm:col-span-2">
+                        <dt class="text-sm font-medium text-gray-500">Raison du rejet</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ sender_id.rejection_reason }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        <!-- Formulaire de décision -->
+        <form method="post" class="p-6 space-y-6 bg-gray-50">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="rounded-lg bg-red-50 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-circle-exclamation text-red-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">
+                            Des erreurs sont survenues
+                        </h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <ul class="list-disc pl-5 space-y-1">
+                                {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="space-y-4">
+                <!-- Statut -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        Décision
+                    </label>
+                    <div class="mt-2 space-y-4">
+                        <div class="flex items-center">
+                            <input type="radio" name="status" value="APPROUVE" id="status_approved" class="h-4 w-4 text-royal-blue focus:ring-royal-blue border-gray-300"
+                                {% if form.status.value == 'APPROUVE' %}checked{% endif %}>
+                            <label for="status_approved" class="ml-3">
+                                <span class="block text-sm font-medium text-gray-700">Approuver</span>
+                                <span class="block text-sm text-gray-500">Le Sender ID pourra être utilisé pour envoyer des SMS</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" name="status" value="REJETE" id="status_rejected" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                                {% if form.status.value == 'REJETE' %}checked{% endif %}>
+                            <label for="status_rejected" class="ml-3">
+                                <span class="block text-sm font-medium text-gray-700">Rejeter</span>
+                                <span class="block text-sm text-gray-500">Le Sender ID ne pourra pas être utilisé</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raison du rejet -->
+                <div class="rejection-reason-field" style="display: none;">
+                    <label for="{{ form.rejection_reason.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Raison du rejet
+                    </label>
+                    <div class="mt-1">
+                        {{ form.rejection_reason }}
+                    </div>
+                    {% if form.rejection_reason.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.rejection_reason.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-gray-200">
+                <div class="flex justify-end space-x-3">
+                    <a href="{% url 'user:sender_id_admin_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-royal-blue">
+                        Annuler
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-royal-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-royal-blue">
+                        <i class="fa-solid fa-check mr-2"></i>
+                        Valider la décision
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rejectionField = document.querySelector('.rejection-reason-field');
+    const statusInputs = document.querySelectorAll('input[name="status"]');
+
+    function toggleRejectionReason() {
+        const isRejected = document.querySelector('input[name="status"]:checked')?.value === 'REJETE';
+        rejectionField.style.display = isRejected ? 'block' : 'none';
+    }
+
+    statusInputs.forEach(input => {
+        input.addEventListener('change', toggleRejectionReason);
+    });
+
+    toggleRejectionReason();
+});
+</script>
+{% endblock %}
+{% endblock %}

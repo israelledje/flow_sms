@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tableau de bord des Campagnes{% endblock %}
+{% block page_title %}Campagnes{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- En-tête avec statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <!-- Total Campagnes -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Total Campagnes</p>
+                    <h3 class="text-2xl font-bold">{{ total_campaigns }}</h3>
+                    <p class="text-sm text-green-600 mt-2">
+                        <i class="fas fa-chart-line mr-1"></i>Campagnes créées
+                    </p>
+                </div>
+                <div class="bg-blue-100 rounded-full p-3">
+                    <i class="fas fa-bullhorn text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campagnes Actives -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Campagnes Actives</p>
+                    <h3 class="text-2xl font-bold">{{ active_campaigns }}</h3>
+                    <p class="text-sm text-green-600 mt-2">
+                        <i class="fas fa-play-circle mr-1"></i>En cours
+                    </p>
+                </div>
+                <div class="bg-green-100 rounded-full p-3">
+                    <i class="fas fa-broadcast-tower text-green-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total SMS -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">SMS Envoyés</p>
+                    <h3 class="text-2xl font-bold">{{ total_sms }}</h3>
+                    <p class="text-sm text-blue-600 mt-2">
+                        <i class="fas fa-paper-plane mr-1"></i>Messages délivrés
+                    </p>
+                </div>
+                <div class="bg-blue-100 rounded-full p-3">
+                    <i class="fas fa-envelope text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Taux de Réussite -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Taux de Réussite</p>
+                    <h3 class="text-2xl font-bold">{{ success_rate|floatformat:1 }}%</h3>
+                    <p class="text-sm text-yellow-600 mt-2">
+                        <i class="fas fa-chart-pie mr-1"></i>Taux de livraison
+                    </p>
+                </div>
+                <div class="bg-yellow-100 rounded-full p-3">
+                    <i class="fas fa-check-circle text-yellow-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white rounded-lg shadow-sm mb-6">
+        <div class="px-4 py-3">
+            <form method="get" class="flex flex-wrap items-center gap-4">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="text-xs font-medium text-gray-600">Type</label>
+                    <select name="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                        <option value="">Tous</option>
+                        <option value="simple" {% if request.GET.type == 'simple' %}selected{% endif %}>Simple</option>
+                        <option value="scheduled" {% if request.GET.type == 'scheduled' %}selected{% endif %}>Programmée</option>
+                        <option value="recurring" {% if request.GET.type == 'recurring' %}selected{% endif %}>Récurrente</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="text-xs font-medium text-gray-600">Statut</label>
+                    <select name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                        <option value="">Tous</option>
+                        <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Brouillon</option>
+                        <option value="sending" {% if request.GET.status == 'sending' %}selected{% endif %}>En cours</option>
+                        <option value="sent" {% if request.GET.status == 'sent' %}selected{% endif %}>Envoyé</option>
+                    </select>
+                </div>
+                <button type="submit" class="mt-5 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filtrer
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des campagnes -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="flex items-center justify-between p-6 border-b">
+            <h2 class="text-lg font-semibold">Liste des Campagnes</h2>
+            <a href="{% url 'campaigns:create' %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-plus-circle mr-2"></i>Nouvelle Campagne
+            </a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expéditeur</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date début</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date fin</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for campaign in campaigns %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ campaign.name }}</div>
+                                    <div class="text-sm text-gray-500">{{ campaign.message_content|truncatechars:50 }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">
+                                {% if campaign.is_rich_sms %}
+                                    SMS enrichi
+                                {% else %}
+                                    SMS simple
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if campaign.status == 'draft' %}bg-gray-100 text-gray-800
+                                {% elif campaign.status == 'sending' %}bg-blue-100 text-blue-800
+                                {% elif campaign.status == 'sent' %}bg-green-100 text-green-800
+                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                {{ campaign.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                            {{ campaign.sender.name|default:"-" }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                            {{ campaign.scheduled_date|date:"d/m/Y H:i"|default:"-" }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                            {{ campaign.sent_at|date:"d/m/Y H:i"|default:"-" }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex items-center space-x-3 justify-end">
+                                <a href="{% url 'campaigns:detail' campaign.pk %}" class="text-blue-600 hover:text-blue-900">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if campaign.status == 'draft' %}
+                                <a href="{% url 'campaigns:edit' campaign.pk %}" class="text-indigo-600 hover:text-indigo-900">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'campaigns:delete' campaign.pk %}" class="text-red-600 hover:text-red-900">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                                {% if campaign.status == 'draft' %}
+                                <button onclick="sendCampaign({{ campaign.pk }})" class="text-green-600 hover:text-green-900">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-inbox text-4xl mb-2"></i>
+                                <p>Aucune campagne trouvée</p>
+                                <a href="{% url 'campaigns:create' %}" class="mt-2 text-blue-600 hover:text-blue-800">
+                                    Créer votre première campagne
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function sendCampaign(campaignId) {
+    if (!confirm('Êtes-vous sûr de vouloir envoyer cette campagne ?')) {
+        return;
+    }
+    
+    fetch(`/campaigns/${campaignId}/send/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then((response) => response.json())
+    .then((data) => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('Erreur lors de l\'envoi de la campagne : ' + data.message);
+        }
+    })
+    .catch((error) => {
+        alert('Erreur lors de l\'envoi de la campagne');
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}

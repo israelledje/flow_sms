@@ -1,0 +1,25 @@
+:root {
+    --royal-blue: #2563eb;
+    --emerald-orange: #f97316;
+    --forest-green: #14532d;
+}
+.sidebar {
+    background: linear-gradient(180deg, var(--royal-blue) 0%, #1e40af 100%);
+}
+.top-bar {
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.menu-item {
+    transition: all 0.3s ease;
+}
+.menu-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+.menu-item.active {
+    background: rgba(255,255,255,0.2);
+    border-left: 4px solid var(--emerald-orange);
+}
+.dropdown-menu {
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}

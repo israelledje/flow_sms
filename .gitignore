@@ -1,0 +1,72 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Django
+*.log
+*.pot
+*.pyc
+db.sqlite3
+db.sqlite3-journal
+media/
+static/collected/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.env/
+.venv/
+
+# Local settings
+local_settings.py
+settings_local.py
+
+# API credentials and sensitive info
+.env
+secrets.json
+
+# Coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+*.cover
+.hypothesis/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+# SMS API credentials
+settings_sms_api.py
+
+# Log files
+logs/
+
+# Temporary files
+temp/
+tmp/
+
+# Database backups
+*.dump
+*.sql
+
+# Frontend
+node_modules/

@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - FLOW SMS{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<!-- Toast de notification pour les erreurs de formulaire -->
+{% if form.errors %}
+<div id="toast-error" class="fixed top-20 right-4 z-50 flex items-start max-w-xs bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-lg shadow-lg animate-fade-in" role="alert">
+    <div class="text-red-500 flex-shrink-0">
+        <i class="fas fa-exclamation-circle text-xl"></i>
+    </div>
+    <div class="ml-3 text-sm font-medium text-red-700">
+        {% if form.name.errors %}
+            {% for error in form.name.errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        {% else %}
+            <p>Veuillez corriger les erreurs dans le formulaire.</p>
+        {% endif %}
+    </div>
+    <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-200 inline-flex h-8 w-8 items-center justify-center" data-dismiss-target="#toast-error" aria-label="Close" onclick="this.parentElement.remove()">
+        <span class="sr-only">Fermer</span>
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+
+<script>
+    // Auto-hide the toast after 5 seconds
+    setTimeout(function() {
+        const toast = document.getElementById('toast-error');
+        if (toast) {
+            toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+            setTimeout(() => toast.remove(), 500);
+        }
+    }, 5000);
+</script>
+{% endif %}
+
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">{{ title }}</h2>
+            <p class="mt-1 text-sm text-gray-500">
+                Le Sender ID est le nom qui apparaîtra comme expéditeur de vos SMS. Il doit être approuvé avant de pouvoir être utilisé.
+            </p>
+        </div>
+
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="rounded-lg bg-red-50 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-circle-exclamation text-red-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">
+                            Des erreurs sont survenues
+                        </h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <ul class="list-disc pl-5 space-y-1">
+                                {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="space-y-4">
+                <!-- Nom du Sender ID -->
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Nom du Sender ID
+                    </label>
+                    <div class="mt-1 relative rounded-lg">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-signature text-gray-400"></i>
+                        </div>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-exclamation-circle text-red-500"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if form.name.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-sm text-gray-500">
+                        Le nom doit contenir uniquement des lettres et des chiffres, maximum 11 caractères.
+                    </p>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Description
+                    </label>
+                    <div class="mt-1 relative rounded-lg">
+                        <div class="absolute top-3 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-align-left text-gray-400"></i>
+                        </div>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="absolute top-3 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-exclamation-circle text-red-500"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if form.description.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-sm text-gray-500">
+                        Décrivez l'utilisation prévue de ce Sender ID pour faciliter son approbation.
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-gray-200">
+                <div class="flex justify-end space-x-3">
+                    <a href="{% url 'user:sender_id_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-royal-blue">
+                        Annuler
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-royal-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-royal-blue">
+                        {% if sender_id %}
+                        <i class="fa-solid fa-save mr-2"></i>
+                        Enregistrer
+                        {% else %}
+                        <i class="fa-solid fa-plus mr-2"></i>
+                        Créer
+                        {% endif %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

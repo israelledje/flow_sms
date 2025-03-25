@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FLOW SMS{% endblock %}</title>
+    {% load static %}
+    <!-- Correction du lien Font Awesome vers une version existante -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'royal-blue': '#1d4ed8',
+                        'emerald-orange': '#f97316',
+                        'forest-green': '#166534',
+                        'sidebar': {
+                            DEFAULT: '#1e40af',
+                            hover: '#1e3a8a',
+                            active: '#1e3a8a',
+                            border: '#2563eb'
+                        }
+                    },
+                    boxShadow: {
+                        'sidebar-item': '0 2px 5px 0 rgba(0, 0, 0, 0.08)',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.2s ease-in-out',
+                        'pulse-subtle': 'pulseSidebar 2s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(-10px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' }
+                        },
+                        pulseSidebar: {
+                            '0%': { boxShadow: '0 0 0 0 rgba(37, 99, 235, 0.2)' },
+                            '70%': { boxShadow: '0 0 0 6px rgba(37, 99, 235, 0)' },
+                            '100%': { boxShadow: '0 0 0 0 rgba(37, 99, 235, 0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .dropdown-menu {
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .nav-link {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-link:hover {
+            transform: translateX(5px);
+        }
+        
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            height: 3px;
+            width: 0;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::before {
+            width: 20%;
+        }
+        
+        .nav-link.active-link::before {
+            width: 25%;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Amélioration pour les icônes */
+        .nav-icon {
+            width: 24px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .nav-link:hover .nav-icon {
+            transform: scale(1.1);
+        }
+
+        /* Pour assurer que la sidebar est visible sur desktop */
+        @media (min-width: 640px) {
+            #logo-sidebar {
+                transform: translateX(0) !important;
+            }
+
+            .content-with-sidebar {
+                margin-left: 16rem;
+            }
+        }
+        
+        /* Effet de glassmorphism pour la sidebar */
+        .glassmorphism {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 bg-gradient-to-br from-violet-100 to-pink-100" >
+    <div class="min-h-screen flex">
+        {% if user.is_authenticated %}
+        <!-- Sidebar fixe -->
+        <aside id="logo-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0 shadow-xl overflow-hidden" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+            <!-- Logo -->
+            <div class="p-6 flex items-center justify-center space-x-3 border-b border-white border-opacity-20">
+                <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-9 inline"> 
+                <span class="text-xl font-bold tracking-tight text-white">FLOW SMS</span>
+            </div>
+
+            <!-- Navigation -->
+            <div class="h-full px-3 py-4 overflow-y-auto">
+                <nav class="flex-1 flex flex-col items-start space-y-3 mt-2">
+                    <a href="{% url 'user:dashboard' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'dashboard' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
+                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'dashboard' %}bg-white bg-opacity-15{% endif %}">
+                            <i class="fa-solid fa-gauge-high"></i>
+                        </div>
+                        <span class="text-base font-medium">Tableau de bord</span>
+                    </a>
+
+                    <a href="{% url 'campaigns:campaign_list' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.app_name == 'campaigns' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
+                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.app_name == 'campaigns' %}bg-white bg-opacity-15{% endif %}">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </div>
+                        <span class="text-base font-medium">Campagnes</span>
+                    </a>
+
+                    <a href="{% url 'user:contacts' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'contacts' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
+                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'contacts' %}bg-white bg-opacity-15{% endif %}">
+                            <i class="fa-solid fa-address-book"></i>
+                        </div>
+                        <span class="text-base font-medium">Contacts</span>
+                    </a>
+
+                    <a href="{% url 'user:settings' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'settings' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
+                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'settings' %}bg-white bg-opacity-15{% endif %}">
+                            <i class="fa-solid fa-gear"></i>
+                        </div>
+                        <span class="text-base font-medium">Paramètres</span>
+                    </a>
+                </nav>
+
+                <!-- Logout Button -->
+                <div class="p-5 border-t border-white border-opacity-20 mt-auto">
+                    <form method="post" action="{% url 'user:logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full relative overflow-hidden group bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center space-x-3 transition-all duration-300 shadow-md hover:shadow-lg">
+                            <span class="absolute inset-0 w-full h-full bg-white/10 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500 rounded-xl"></span>
+                            <i class="fa-solid fa-right-from-bracket relative z-10"></i>
+                            <span class="font-medium relative z-10">Déconnexion</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+        {% endif %}
+
+        <div class="flex-1 {% if user.is_authenticated %}content-with-sidebar{% endif %}">
+            {% if user.is_authenticated %}
+            <!-- Top Bar -->
+            <header class="bg-white shadow-sm sticky top-0 z-10">
+                <div class="max-w-7xl mx-auto px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <!-- Page Title with icon -->
+                        <div class="flex items-center space-x-3">
+                            <!-- Bouton pour ouvrir la sidebar sur mobile -->
+                            <button type="button" class="sm:hidden inline-flex items-center p-2 text-sm text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200" id="toggleSidebarBtn">
+                                <span class="sr-only">Ouvrir menu</span>
+                                <svg class="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
+                                </svg>
+                            </button>
+                            <h1 class="text-2xl font-bold text-gray-800">
+                                {% block page_title %}{% endblock %}
+                            </h1>
+                        </div>
+
+                        <!-- User Menu -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-4 focus:outline-none bg-gray-50 hover:bg-gray-100 transition-colors duration-200 rounded-xl px-4 py-2">
+                                <div class="h-10 w-10 rounded-full bg-royal-blue bg-opacity-10 flex items-center justify-center border-2 border-royal-blue border-opacity-20">
+                                    {% if user.profile_image %}
+                                        <img src="{{ user.profile_image.url }}" alt="Profile" class="h-9 w-9 rounded-full object-cover">
+                                    {% else %}
+                                        <i class="fa-solid fa-user"></i>
+                                    {% endif %}
+                                </div>
+                                <span class="text-gray-700 font-medium">{{ user.get_full_name|default:user.username }}</span>
+                                <i class="fa-solid fa-chevron-down text-gray-400 transition-transform duration-200" :class="{'transform rotate-180': open}"></i>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div x-show="open" @click.away="open = false" x-transition class="dropdown-menu absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg py-2 border border-gray-100">
+                                <a href="{% url 'user:profile' %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+                                    <i class="fa-solid fa-user text-royal-blue"></i>
+                                    <span>Mon profil</span>
+                                </a>
+                                <a href="{% url 'user:settings' %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+                                    <i class="fa-solid fa-gear text-royal-blue"></i>
+                                    <span>Paramètres</span>
+                                </a>
+                                <hr class="my-2 border-gray-100">
+                                <form method="post" action="{% url 'user:logout' %}" class="block">
+                                    {% csrf_token %}
+                                    <button type="submit" class="w-full flex items-center space-x-3 text-left px-4 py-3 text-red-600 hover:bg-gray-50 transition-colors duration-200">
+                                        <i class="fa-solid fa-right-from-bracket text-red-600"></i>
+                                        <span>Déconnexion</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            {% endif %}
+
+            <!-- Main Content -->
+            <main class="{% if user.is_authenticated %}p-6{% else %}p-0{% endif %}">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+            const logoSidebar = document.getElementById('logo-sidebar');
+            
+            // Pour le bouton toggle mobile
+            if (toggleSidebarBtn) {
+                toggleSidebarBtn.addEventListener('click', function() {
+                    logoSidebar.classList.toggle('-translate-x-full');
+                });
+            }
+        });
+    </script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
