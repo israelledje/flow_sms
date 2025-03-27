@@ -100,45 +100,25 @@ class Campaign(models.Model):
         if not self.sender or self.sender.status != 'approved':
             raise ValueError("Un Sender ID approuvé est requis pour envoyer la campagne")
 
-        # Vérifier si la campagne est programmée mais que sa date d'envoi est arrivée
-        if self.status == 'scheduled' and self.scheduled_date <= timezone.now():
-            self.status = 'sending'
-            self.save()
-            
-            # Les messages sont déjà créés à ce stade, on les envoie simplement
-            messages_to_send = Message.objects.filter(campaign=self)
-            for message in messages_to_send:
-                message.send()
-            
-            self.status = 'sent'
-            self.save()
-            return
+        # Préparer la liste des numéros
+        phone_numbers = [contact.phone_number for contact in self.contacts.all()]
+
+        # Initialisation du service SMS
+        sms_service = SMSAPIService()
         
-        # Envoi immédiat d'une campagne en brouillon
-        if self.status == 'draft' and (self.scheduled_date is None or self.scheduled_date <= timezone.now()):
-            self.status = 'sending'
-            self.save()
-            
-            # Pour les campagnes créées sans contact préalable
-            if not Message.objects.filter(campaign=self).exists():
-                for contact in self.contacts.all():
-                    message = Message.objects.create(
-                        campaign=self,
-                        contact=contact,
-                        content=self.message_content,
-                        is_rich_sms=self.is_rich_sms,
-                        rich_content=self.rich_content,
-                        sender=self.sender
-                    )
-                    message.send()
-            else:
-                # Pour les campagnes où les messages ont été créés lors de la sauvegarde
-                messages_to_send = Message.objects.filter(campaign=self)
-                for message in messages_to_send:
-                    message.send()
-            
-            self.status = 'sent'
-            self.save()
+        # Envoi du SMS
+        response = sms_service.send_bulk_sms(
+            sender_id=self.sender.name,
+            message=self.message_content,
+            mobiles=phone_numbers,
+            schedule_time=self.scheduled_date
+        )
+        
+        # Traitement de la réponse
+        processed_response = sms_service.process_api_response(response)
+        
+        self.status = 'sent' if processed_response['success'] else 'failed'
+        self.save()        
 
 class Message(models.Model):
     STATUS_CHOICES = [
