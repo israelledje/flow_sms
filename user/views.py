@@ -12,10 +12,13 @@ from django.contrib.auth.views import (
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
+from django.db.models import Count, Q
+from datetime import timedelta
 
 from .forms import UserRegistrationForm, AccountDeactivationForm, SenderIDForm, SenderIDAdminForm
 from .models import User, SenderID
 from .backends import EmailBackend
+from campaigns.models import Campaign, Message, Contact
 
 class CustomLoginView(LoginView):
     template_name = 'user/login.html'
@@ -102,32 +105,88 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # Liste vide pour le template
         context['empty_list'] = []
         
+        # Obtenir les campagnes de l'utilisateur
+        user_campaigns = Campaign.objects.filter(user=self.request.user)
+        
+        # Obtenir les messages de l'utilisateur
+        user_messages = Message.objects.filter(campaign__user=self.request.user)
+        
+        # Calculer le nombre total de messages envoyés
+        total_messages = user_messages.count()
+        
+        # Calculer le nombre de messages délivrés
+        delivered_messages = user_messages.filter(status='delivered').count()
+        
+        # Calculer le taux de livraison
+        delivery_rate = (delivered_messages / total_messages * 100) if total_messages > 0 else 0
+        
+        # Obtenir les campagnes actives (en cours d'envoi ou programmées)
+        active_campaigns = user_campaigns.filter(
+            Q(status='sending') | 
+            Q(status='scheduled', scheduled_date__gt=timezone.now())
+        ).count()
+        
+        # Obtenir les campagnes se terminant bientôt (dans les 24h)
+        campaigns_ending = user_campaigns.filter(
+            status='sending',
+            updated_at__lt=timezone.now() - timedelta(hours=24)
+        ).count()
+        
+        # Obtenir le nombre total de contacts
+        total_contacts = Contact.objects.filter(
+            message__campaign__user=self.request.user
+        ).distinct().count()
+        
+        # Obtenir les nouveaux contacts du mois
+        new_contacts = Contact.objects.filter(
+            message__campaign__user=self.request.user,
+            message__sent_at__gte=timezone.now() - timedelta(days=30)
+        ).distinct().count()
+        
+        # Calculer la croissance des messages (comparaison avec le mois précédent)
+        last_month_messages = user_messages.filter(
+            sent_at__gte=timezone.now() - timedelta(days=30)
+        ).count()
+        previous_month_messages = user_messages.filter(
+            sent_at__gte=timezone.now() - timedelta(days=60),
+            sent_at__lt=timezone.now() - timedelta(days=30)
+        ).count()
+        
+        messages_growth = ((last_month_messages - previous_month_messages) / previous_month_messages * 100) if previous_month_messages > 0 else 0
+        
         # Statistiques du tableau de bord
         context['stats'] = {
-            'messages_sent': 0,  # À remplacer par le vrai nombre
-            'messages_growth': 15,  # Exemple de croissance
-            'active_campaigns': 0,  # À remplacer par le nombre réel
-            'campaigns_ending': 0,  # Nombre de campagnes se terminant bientôt
-            'total_contacts': 0,  # À remplacer par le nombre réel
-            'new_contacts': 0,  # Nouveaux contacts ce mois
-            'delivery_rate': 98,  # Exemple de taux de livraison
+            'messages_sent': total_messages,
+            'messages_growth': round(messages_growth, 1),
+            'active_campaigns': active_campaigns,
+            'campaigns_ending': campaigns_ending,
+            'total_contacts': total_contacts,
+            'new_contacts': new_contacts,
+            'delivery_rate': round(delivery_rate, 1),
         }
 
-        # Activités récentes (exemple)
-        context['recent_activities'] = [
-            {
-                'type': 'message',
-                'title': 'Campagne terminée',
-                'description': 'La campagne "Promotion été" est terminée avec un taux de livraison de 98%',
-                'time': 'Il y a 2h'
-            },
-            {
-                'type': 'campaign',
-                'title': 'Nouvelle campagne',
-                'description': 'La campagne "Newsletter mensuelle" a été créée',
-                'time': 'Il y a 5h'
-            }
-        ]
+        # Activités récentes
+        recent_campaigns = user_campaigns.order_by('-updated_at')[:5]
+        recent_activities = []
+        
+        for campaign in recent_campaigns:
+            if campaign.status == 'sent':
+                delivery_rate = (campaign.message_set.filter(status='delivered').count() / campaign.message_set.count() * 100) if campaign.message_set.exists() else 0
+                recent_activities.append({
+                    'type': 'message',
+                    'title': 'Campagne terminée',
+                    'description': f'La campagne "{campaign.name}" est terminée avec un taux de livraison de {round(delivery_rate, 1)}%',
+                    'time': f'Il y a {(timezone.now() - campaign.updated_at).days}j'
+                })
+            elif campaign.status == 'draft':
+                recent_activities.append({
+                    'type': 'campaign',
+                    'title': 'Nouvelle campagne',
+                    'description': f'La campagne "{campaign.name}" a été créée',
+                    'time': f'Il y a {(timezone.now() - campaign.created_at).days}j'
+                })
+        
+        context['recent_activities'] = recent_activities
 
         return context
 
