@@ -779,3 +779,33 @@ class DownloadTemplateView(LoginRequiredMixin, View):
         response['Content-Disposition'] = 'attachment; filename="contacts_template.xlsx"'
         wb.save(response)
         return response
+
+class AddContactsToGroupView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            group_id = data.get('group_id')
+            contact_ids = data.get('contact_ids', [])
+            
+            if not group_id or not contact_ids:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Groupe et contacts requis'
+                }, status=400)
+            
+            group = get_object_or_404(ContactGroup, id=group_id, user=request.user)
+            contacts = Contact.objects.filter(id__in=contact_ids, user=request.user)
+            
+            group.contacts.add(*contacts)
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'{len(contacts)} contacts ajoutés au groupe {group.name}',
+                'count': len(contacts)
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)

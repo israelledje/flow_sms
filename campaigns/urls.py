@@ -20,11 +20,12 @@ urlpatterns = [
     # Gestion des contacts
     path('contacts/', views.ContactListView.as_view(), name='contact_list'),
     path('contacts/create/', views.ContactCreateView.as_view(), name='contact_create'),
-    path('contacts/<int:pk>/edit/', views.ContactUpdateView.as_view(), name='contact_edit'),
+    path('contacts/<int:pk>/update/', views.ContactUpdateView.as_view(), name='contact_update'),
     path('contacts/<int:pk>/delete/', views.ContactDeleteView.as_view(), name='contact_delete'),
     path('contacts/import/', views.ContactImportView.as_view(), name='contact_import'),
     path('contacts/export/', views.ContactExportView.as_view(), name='contact_export'),
     path('contacts/template/', views.DownloadTemplateView.as_view(), name='contact_template'),
+    path('contacts/add-to-group/', views.AddContactsToGroupView.as_view(), name='add_contacts_to_group'),
     
     # Gestion des groupes de contacts
     path('contact-groups/', views.ContactGroupListView.as_view(), name='contact_group_list'),

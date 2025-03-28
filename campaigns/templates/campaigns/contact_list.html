@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}Gestion des contacts{% endblock %}
+{% block page_title %}Contacts{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
@@ -7,6 +7,19 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Gestion des contacts</h1>
         <div class="flex space-x-4">
+            <!-- Bouton Ajouter au groupe -->
+            <div class="relative">
+                <button id="addToGroupBtn" disabled class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors opacity-50 cursor-not-allowed">
+                    <i class="fas fa-users mr-2"></i>Ajouter au groupe
+                </button>
+                <div id="groupDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
+                    {% for group in contact_groups %}
+                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-group-id="{{ group.id }}">
+                        {{ group.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
             <button onclick="openImportModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                 <i class="fas fa-file-import mr-2"></i>Importer
             </button>
@@ -57,11 +70,14 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                            <input type="checkbox" id="selectAll" class="form-check-input">
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Numéro</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prénom</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groupes</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date d'ajout</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -69,12 +85,16 @@
                     {% for contact in contacts %}
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">
-                                {{ contact.first_name }} {{ contact.last_name }}
-                            </div>
+                            <input type="checkbox" class="form-check-input contact-checkbox" data-contact-id="{{ contact.id }}">
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ contact.phone_number }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ contact.first_name|default:"-" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ contact.last_name|default:"-" }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ contact.email|default:"-" }}</div>
@@ -82,11 +102,8 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ contact.group_names|default:"-" }}</div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ contact.created_at|date:"d/m/Y H:i" }}</div>
-                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <a href="{% url 'campaigns:contact_edit' contact.pk %}" class="text-blue-600 hover:text-blue-900 mr-4">
+                            <a href="{% url 'campaigns:contact_update' contact.pk %}" class="text-blue-600 hover:text-blue-900 mr-4">
                                 <i class="fas fa-edit"></i>
                             </a>
                             <a href="{% url 'campaigns:contact_delete' contact.pk %}" class="text-red-600 hover:text-red-900">
@@ -96,7 +113,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                             Aucun contact trouvé
                         </td>
                     </tr>
@@ -258,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, unhighlight, false);
+        dropZone.addEventListener('drop', handleDrop, false);
     });
 
     function highlight(e) {
@@ -396,6 +413,92 @@ document.addEventListener('DOMContentLoaded', function() {
             row.style.display = matchesSearch && matchesGroup ? '' : 'none';
         });
     }
+
+    // Gestion de la sélection multiple
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const contactCheckboxes = document.querySelectorAll('.contact-checkbox');
+    const addToGroupBtn = document.getElementById('addToGroupBtn');
+    const groupDropdown = document.getElementById('groupDropdown');
+    
+    // Sélectionner/Désélectionner tout
+    selectAllCheckbox.addEventListener('change', function() {
+        contactCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateAddToGroupButton();
+    });
+    
+    // Mettre à jour le bouton quand une case est cochée
+    contactCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateAddToGroupButton);
+    });
+    
+    // Activer/Désactiver le bouton selon la sélection
+    function updateAddToGroupButton() {
+        const checkedBoxes = document.querySelectorAll('.contact-checkbox:checked');
+        const isDisabled = checkedBoxes.length === 0;
+        
+        addToGroupBtn.disabled = isDisabled;
+        addToGroupBtn.classList.toggle('opacity-50', isDisabled);
+        addToGroupBtn.classList.toggle('cursor-not-allowed', isDisabled);
+        
+        if (checkedBoxes.length > 0) {
+            addToGroupBtn.innerHTML = `<i class="fas fa-users mr-2"></i>Ajouter au groupe (${checkedBoxes.length})`;
+        } else {
+            addToGroupBtn.innerHTML = '<i class="fas fa-users mr-2"></i>Ajouter au groupe';
+        }
+    }
+    
+    // Gérer l'affichage du dropdown
+    addToGroupBtn.addEventListener('click', function() {
+        if (!this.disabled) {
+            groupDropdown.classList.toggle('hidden');
+        }
+    });
+    
+    // Fermer le dropdown en cliquant ailleurs
+    document.addEventListener('click', function(e) {
+        if (!addToGroupBtn.contains(e.target) && !groupDropdown.contains(e.target)) {
+            groupDropdown.classList.add('hidden');
+        }
+    });
+    
+    // Gérer la sélection d'un groupe
+    document.querySelectorAll('#groupDropdown a').forEach(item => {
+        item.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const groupId = this.dataset.groupId;
+            const checkedBoxes = document.querySelectorAll('.contact-checkbox:checked');
+            const contactIds = Array.from(checkedBoxes).map(cb => cb.dataset.contactId);
+            
+            try {
+                const response = await fetch('{% url "campaigns:add_contacts_to_group" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        group_id: groupId,
+                        contact_ids: contactIds
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+            
+            groupDropdown.classList.add('hidden');
+        });
+    });
 
     // Exposer la fonction openImportModal globalement
     window.openImportModal = openImportModal;
