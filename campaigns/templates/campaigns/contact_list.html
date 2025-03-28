@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+{% block page_title %}Gestion des contacts{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- En-tête avec boutons d'action -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Gestion des contacts</h1>
+        <div class="flex space-x-4">
+            <button onclick="openImportModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-file-import mr-2"></i>Importer
+            </button>
+            <div class="relative group">
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-file-export mr-2"></i>Exporter
+                </button>
+                <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden group-hover:block">
+                    <a href="{% url 'campaigns:contact_export' %}?format=csv" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-file-csv mr-2"></i>CSV
+                    </a>
+                    <a href="{% url 'campaigns:contact_export' %}?format=excel" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-file-excel mr-2"></i>Excel
+                    </a>
+                </div>
+            </div>
+            <a href="{% url 'campaigns:contact_create' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>Nouveau contact
+            </a>
+            <a href="{% url 'campaigns:contact_group_list' %}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-users mr-2"></i>Gérer les groupes
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtres et recherche -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Rechercher</label>
+                <input type="text" id="search" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Nom, numéro ou email...">
+            </div>
+            <div>
+                <label for="group_filter" class="block text-sm font-medium text-gray-700 mb-1">Groupe</label>
+                <select id="group_filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Tous les groupes</option>
+                    {% for group in contact_groups %}
+                    <option value="{{ group.id }}">{{ group.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des contacts -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Numéro</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groupes</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date d'ajout</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for contact in contacts %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ contact.first_name }} {{ contact.last_name }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ contact.phone_number }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ contact.email|default:"-" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ contact.group_names|default:"-" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ contact.created_at|date:"d/m/Y H:i" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'campaigns:contact_edit' contact.pk %}" class="text-blue-600 hover:text-blue-900 mr-4">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'campaigns:contact_delete' contact.pk %}" class="text-red-600 hover:text-red-900">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                            Aucun contact trouvé
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'import -->
+<div id="importModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-6 border w-[500px] shadow-xl rounded-lg bg-white transform transition-all">
+        <div class="mt-3">
+            <!-- En-tête de la modale -->
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-900">Importer des contacts</h3>
+                    <p class="text-sm text-gray-500 mt-1">Importez vos contacts depuis un fichier Excel ou CSV</p>
+                </div>
+                <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-500 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Section du template -->
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="text-sm font-medium text-blue-800">Template Excel</h4>
+                        <p class="text-sm text-blue-600 mt-1">Téléchargez notre template pour un import parfait</p>
+                    </div>
+                    <a href="{% url 'campaigns:contact_template' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-download mr-2"></i>Télécharger
+                    </a>
+                </div>
+            </div>
+
+            <!-- Formulaire d'import -->
+            <form id="importForm" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Zone de dépôt de fichier -->
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                    <input type="file" name="file" accept=".csv,.xlsx" class="hidden" id="fileInput">
+                    <div class="space-y-2">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400"></i>
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">Cliquez pour sélectionner</span> ou glissez-déposez votre fichier
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            Formats acceptés : CSV, Excel
+                        </div>
+                    </div>
+                    <div id="fileName" class="mt-2 text-sm text-gray-600 hidden"></div>
+                </div>
+
+                <!-- Barre de progression -->
+                <div id="uploadStatus" class="hidden">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-700">Progression</span>
+                        <span id="progressText" class="text-sm text-gray-600">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Sélection du groupe -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Groupe (optionnel)</label>
+                    <select name="group" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Aucun groupe</option>
+                        {% for group in contact_groups %}
+                        <option value="{{ group.id }}">{{ group.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" onclick="closeImportModal()" class="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors">
+                        Annuler
+                    </button>
+                    <button type="submit" id="submitImport" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                        <i class="fas fa-upload mr-2"></i>Importer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de notification -->
+<div id="toast" class="fixed bottom-4 right-4 z-50 hidden">
+    <div class="flex items-center p-4 text-sm rounded-lg shadow-lg max-w-xs" role="alert">
+        <div id="toastIcon" class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg me-3">
+            <i id="toastIconType" class="fas"></i>
+        </div>
+        <div class="ms-3 text-sm font-normal" id="toastMessage"></div>
+        <button type="button" class="ms-auto -mx-1.5 -my-1.5 rounded-lg p-1.5 inline-flex items-center justify-center h-8 w-8 hover:bg-gray-100" onclick="hideToast()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Éléments DOM
+    const importModal = document.getElementById('importModal');
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const submitImport = document.getElementById('submitImport');
+    const importForm = document.getElementById('importForm');
+    const dropZone = document.querySelector('.border-dashed');
+
+    // Gestion du modal d'import
+    function openImportModal() {
+        importModal.classList.remove('hidden');
+        setTimeout(() => {
+            importModal.querySelector('.transform').classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeImportModal() {
+        importModal.querySelector('.transform').classList.remove('scale-100');
+        setTimeout(() => {
+            importModal.classList.add('hidden');
+            resetImportForm();
+        }, 200);
+    }
+
+    function resetImportForm() {
+        importForm.reset();
+        fileName.classList.add('hidden');
+        uploadStatus.classList.add('hidden');
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
+        submitImport.disabled = false;
+    }
+
+    // Gestion du drag & drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        dropZone.classList.add('border-blue-500');
+    }
+
+    function unhighlight(e) {
+        dropZone.classList.remove('border-blue-500');
+    }
+
+    dropZone.addEventListener('drop', handleDrop, false);
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    }
+
+    fileInput.addEventListener('change', function() {
+        handleFiles(this.files);
+    });
+
+    function handleFiles(files) {
+        if (files.length > 0) {
+            const file = files[0];
+            fileName.textContent = file.name;
+            fileName.classList.remove('hidden');
+        }
+    }
+
+    // Gestion des notifications toast
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        const toastIconType = document.getElementById('toastIconType');
+
+        toastMessage.textContent = message;
+
+        if (type === 'success') {
+            toast.querySelector('div').className = 'flex items-center p-4 text-sm text-green-800 rounded-lg bg-green-50 shadow-lg max-w-xs';
+            toastIcon.className = 'inline-flex items-center justify-center flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg me-3';
+            toastIconType.className = 'fas fa-check text-green-500';
+        } else {
+            toast.querySelector('div').className = 'flex items-center p-4 text-sm text-red-800 rounded-lg bg-red-50 shadow-lg max-w-xs';
+            toastIcon.className = 'inline-flex items-center justify-center flex-shrink-0 w-8 h-8 bg-red-100 rounded-lg me-3';
+            toastIconType.className = 'fas fa-times text-red-500';
+        }
+
+        toast.classList.remove('hidden');
+        setTimeout(hideToast, 5000);
+    }
+
+    function hideToast() {
+        const toast = document.getElementById('toast');
+        toast.classList.add('hidden');
+    }
+
+    // Soumission du formulaire d'import
+    importForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showToast('Veuillez sélectionner un fichier', 'error');
+            return;
+        }
+
+        const formData = new FormData(this);
+        submitImport.disabled = true;
+        uploadStatus.classList.remove('hidden');
+
+        // Simuler le début du traitement
+        progressBar.style.width = '10%';
+        progressText.textContent = '10%';
+
+        fetch("{% url 'campaigns:contact_import' %}", {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            progressBar.style.width = '50%';
+            progressText.textContent = '50%';
+            return response.json();
+        })
+        .then(data => {
+            progressBar.style.width = '100%';
+            progressText.textContent = '100%';
+
+            if (data.status === 'success') {
+                const message = `Import réussi : ${data.data.valid_count} contacts valides, ${data.data.invalid_count} invalides, ${data.data.duplicate_count} doublons`;
+                showToast(message, 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showToast('Erreur lors de l\'import : ' + data.message, 'error');
+                submitImport.disabled = false;
+                uploadStatus.classList.add('hidden');
+            }
+        })
+        .catch(error => {
+            showToast('Erreur lors de l\'import : ' + error, 'error');
+            submitImport.disabled = false;
+            uploadStatus.classList.add('hidden');
+        });
+    });
+
+    // Recherche et filtres
+    const searchInput = document.getElementById('search');
+    const groupFilter = document.getElementById('group_filter');
+
+    searchInput.addEventListener('input', filterContacts);
+    groupFilter.addEventListener('change', filterContacts);
+
+    function filterContacts() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const groupId = groupFilter.value;
+        const rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach(row => {
+            const name = row.cells[0].textContent.toLowerCase();
+            const number = row.cells[1].textContent.toLowerCase();
+            const email = row.cells[2].textContent.toLowerCase();
+            const groups = row.cells[3].textContent.toLowerCase();
+
+            const matchesSearch = name.includes(searchTerm) || 
+                                number.includes(searchTerm) || 
+                                email.includes(searchTerm) ||
+                                groups.includes(searchTerm);
+
+            const matchesGroup = !groupId || groups.includes(groupId);
+
+            row.style.display = matchesSearch && matchesGroup ? '' : 'none';
+        });
+    }
+
+    // Exposer la fonction openImportModal globalement
+    window.openImportModal = openImportModal;
+    window.closeImportModal = closeImportModal;
+    window.hideToast = hideToast;
+});
+</script>
+{% endblock %} 

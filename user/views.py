@@ -18,7 +18,7 @@ from datetime import timedelta
 from .forms import UserRegistrationForm, AccountDeactivationForm, SenderIDForm, SenderIDAdminForm
 from .models import User, SenderID
 from .backends import EmailBackend
-from campaigns.models import Campaign, Message, Contact
+from campaigns.models import Campaign, Message, Contact, ContactGroup
 
 class CustomLoginView(LoginView):
     template_name = 'user/login.html'
@@ -208,11 +208,12 @@ class SettingsView(LoginRequiredMixin, TemplateView):
         return context
 
 class ContactsView(LoginRequiredMixin, TemplateView):
-    template_name = 'user/contacts.html'
+    template_name = 'campaigns/contact_list.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['user'] = self.request.user
+        context['contacts'] = Contact.objects.filter(user=self.request.user)
+        context['contact_groups'] = ContactGroup.objects.filter(user=self.request.user)
         return context
 
 @login_required

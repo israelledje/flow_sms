@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block page_title %}Supprimer le modèle{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <h1 class="text-xl font-medium text-gray-900 mb-6">Supprimer le modèle</h1>
+
+            <p class="text-gray-600 mb-6">
+                Êtes-vous sûr de vouloir supprimer le modèle "{{ object.name }}" ? Cette action est irréversible.
+            </p>
+
+            <div class="bg-gray-50 p-4 rounded-md mb-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Contenu du modèle :</h3>
+                <p class="text-sm text-gray-600">{{ object.content }}</p>
+            </div>
+
+            <form method="post" class="flex justify-start space-x-3">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <i class="fas fa-trash mr-2"></i>
+                    Supprimer
+                </button>
+                <a href="{% url 'campaigns:sms_template_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fas fa-times mr-2"></i>
+                    Annuler
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

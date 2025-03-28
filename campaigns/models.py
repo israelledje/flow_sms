@@ -4,6 +4,8 @@ from django.conf import settings
 from .services import SMSAPIService
 from phonenumbers import parse, is_valid_number
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+import re
 
 class SenderId(models.Model):
     STATUS_CHOICES = [
@@ -56,21 +58,54 @@ class SenderId(models.Model):
         if self.user_sender_id:
             self.sync_with_user_sender_id()
 
-class Contact(models.Model):
-    phone_number = models.CharField(max_length=15)
+class ContactGroup(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.phone_number
+        return self.name
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['name', 'user']
+
+class Contact(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='contacts')
+    phone_number = models.CharField(max_length=20)
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    groups = models.ManyToManyField('ContactGroup', blank=True, related_name='contacts')
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'phone_number']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.phone_number})"
+
+    @property
+    def group_names(self):
+        return ", ".join([group.name for group in self.groups.all()])
 
     def clean(self):
         try:
-            parsed = parse(self.phone_number, None)
-            if not is_valid_number(parsed):
-                raise ValidationError('Numéro de téléphone invalide')
-        except:
-            raise ValidationError('Format de numéro incorrect')
+            # Vérification du format camerounais
+            if not self.phone_number or not re.match(r'^237\d{8}$', self.phone_number):
+                raise ValidationError({
+                    'phone_number': 'Le numéro de téléphone doit être au format camerounais (237 suivi de 8 ou 9 chiffres)'
+                })
+        except Exception as e:
+            raise ValidationError({
+                'phone_number': str(e)
+            })
 
 class Campaign(models.Model):
     STATUS_CHOICES = [
@@ -176,3 +211,17 @@ class Message(models.Model):
             self.error_description = str(e)
             self.save()
             raise e
+
+class SMSTemplate(models.Model):
+    name = models.CharField(max_length=200)
+    content = models.TextField()
+    variables = models.JSONField(default=list, help_text="Liste des variables disponibles dans le template")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['-created_at']

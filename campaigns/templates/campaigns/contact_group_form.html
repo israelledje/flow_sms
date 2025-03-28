@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+
+{% block page_title %}
+    {% if form.instance.pk %}Modifier le groupe{% else %}Nouveau groupe{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="p-8">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    {% if form.instance.pk %}Modifier le groupe{% else %}Nouveau groupe{% endif %}
+                </h2>
+                <a href="{% url 'campaigns:contact_group_list' %}" class="text-gray-600 hover:text-gray-800">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-lg">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">
+                                Veuillez corriger les erreurs suivantes :
+                            </h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                {{ form.errors }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="space-y-6">
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            Nom du groupe
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-users text-gray-400"></i>
+                            </div>
+                            {{ form.name|addclass:"pl-10 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" }}
+                        </div>
+                        {% if form.name.help_text %}
+                        <p class="mt-2 text-sm text-gray-500">{{ form.name.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            Description
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-info-circle text-gray-400"></i>
+                            </div>
+                            {{ form.description|addclass:"pl-10 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" }}
+                        </div>
+                        {% if form.description.help_text %}
+                        <p class="mt-2 text-sm text-gray-500">{{ form.description.help_text }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 pt-6 border-t">
+                    <a href="{% url 'campaigns:contact_group_list' %}" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                        Annuler
+                    </a>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                        <i class="fas fa-save mr-2"></i>
+                        {% if form.instance.pk %}Mettre à jour{% else %}Créer{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

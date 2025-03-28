@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block page_title %}{% if object %}Modifier le modèle{% else %}Nouveau modèle de SMS{% endif %}{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-white shadow-sm rounded-lg p-6">
+            <h1 class="text-xl font-medium text-gray-900 mb-6">
+                {% if object %}Modifier le modèle{% else %}Nouveau modèle de SMS{% endif %}
+            </h1>
+
+            <form method="post" class="space-y-6" id="template-form">
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                    <h3 class="font-medium">Veuillez corriger les erreurs suivantes :</h3>
+                    <ul class="mt-1.5 ml-4 list-disc list-inside">
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Nom du modèle -->
+                <div class="space-y-2">
+                    <label for="id_name" class="block text-sm font-medium text-gray-700">Nom du modèle</label>
+                    <input type="text" name="name" id="id_name" required 
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white" 
+                        placeholder="Ex: Confirmation de commande"
+                        {% if form.name.value %}value="{{ form.name.value }}"{% endif %}>
+                </div>
+
+                <!-- Contenu du modèle -->
+                <div class="space-y-2">
+                    <label for="id_content" class="block text-sm font-medium text-gray-700">Contenu du modèle</label>
+                    <div class="relative">
+                        <textarea name="content" id="id_content" rows="6" required 
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+                            placeholder="Contenu du modèle...">{% if form.content.value %}{{ form.content.value }}{% endif %}</textarea>
+                        <div id="characterCountContainer" class="absolute bottom-2 right-2 text-sm bg-gray-100 px-2 py-1 rounded-md">
+                            <span id="characterCount" class="text-sm">0</span> caractères (max 160)
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500">
+                        Utilisez des variables entre accolades, par exemple : {{nom}}, {{montant}}, etc.
+                    </p>
+                </div>
+
+                <!-- Variables -->
+                <div class="space-y-2">
+                    <label for="id_variables" class="block text-sm font-medium text-gray-700">Variables disponibles</label>
+                    <div id="variables-container" class="space-y-2">
+                        {% if form.variables.value %}
+                            {% for variable in form.variables.value %}
+                            <div class="flex items-center space-x-2">
+                                <input type="text" name="variable_input" value="{{ variable }}" class="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm">
+                                <button type="button" class="text-red-600 hover:text-red-900" onclick="this.parentElement.remove(); updateVariablesJson();">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <button type="button" id="add-variable" class="mt-2 inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-plus mr-1"></i>
+                        Ajouter une variable
+                    </button>
+                    <input type="hidden" name="variables" id="variables_json" value="[]">
+                </div>
+
+                <!-- Boutons -->
+                <div class="flex justify-start space-x-3 pt-4">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-save mr-2"></i>
+                        {% if object %}Mettre à jour{% else %}Créer{% endif %}
+                    </button>
+                    <a href="{% url 'campaigns:sms_template_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-times mr-2"></i>
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Fonction pour mettre à jour le compteur de caractères
+function updateCharacterCount() {
+    const textarea = document.getElementById('id_content');
+    const count = textarea.value.length;
+    document.getElementById('characterCount').textContent = count;
+}
+
+// Fonction pour extraire les variables du contenu
+function extractVariables() {
+    const content = document.getElementById('id_content').value;
+    const regex = /\{\{([^}]+)\}\}/g;
+    const matches = content.matchAll(regex);
+    const variables = [];
+    
+    for (const match of matches) {
+        const variable = match[1].trim();
+        if (variable && !variables.includes(variable)) {
+            variables.push(variable);
+        }
+    }
+    
+    return variables;
+}
+
+// Fonction pour mettre à jour le champ caché des variables
+function updateVariablesJson() {
+    const variables = Array.from(document.querySelectorAll('input[name="variable_input"]'))
+        .map(input => input.value.trim())
+        .filter(value => value !== '');
+    document.getElementById('variables_json').value = JSON.stringify(variables);
+}
+
+// Fonction pour ajouter une variable
+function addVariable() {
+    const container = document.getElementById('variables-container');
+    const div = document.createElement('div');
+    div.className = 'flex items-center space-x-2';
+    div.innerHTML = `
+        <input type="text" name="variable_input" class="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm" 
+               placeholder="Nom de la variable">
+        <button type="button" class="text-red-600 hover:text-red-900" onclick="this.parentElement.remove(); updateVariablesJson();">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('template-form');
+    const contentTextarea = document.getElementById('id_content');
+    
+    // Écouter les changements dans le textarea
+    contentTextarea.addEventListener('input', function() {
+        updateCharacterCount();
+        const variables = extractVariables();
+        const container = document.getElementById('variables-container');
+        container.innerHTML = '';
+        variables.forEach(variable => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-2';
+            div.innerHTML = `
+                <input type="text" name="variable_input" value="${variable}" class="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm">
+                <button type="button" class="text-red-600 hover:text-red-900" onclick="this.parentElement.remove(); updateVariablesJson();">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        });
+        updateVariablesJson();
+    });
+
+    // Écouter le clic sur le bouton d'ajout de variable
+    document.getElementById('add-variable').addEventListener('click', addVariable);
+
+    // Écouter la soumission du formulaire
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        updateVariablesJson();
+        this.submit();
+    });
+
+    // Initialiser le compteur de caractères et les variables
+    updateCharacterCount();
+    if (contentTextarea.value) {
+        contentTextarea.dispatchEvent(new Event('input'));
+    }
+});
+</script>
+{% endblock %} 

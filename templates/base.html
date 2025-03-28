@@ -152,8 +152,15 @@
                         <span class="text-base font-medium">Campagnes</span>
                     </a>
 
-                    <a href="{% url 'user:contacts' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'contacts' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
-                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'contacts' %}bg-white bg-opacity-15{% endif %}">
+                    <a href="{% url 'campaigns:sms_template_list' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'sms_template_list' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
+                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'sms_template_list' %}bg-white bg-opacity-15{% endif %}">
+                            <i class="fa-solid fa-file-lines"></i>
+                        </div>
+                        <span class="text-base font-medium">Modèles SMS</span>
+                    </a>
+
+                    <a href="{% url 'campaigns:contact_list' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'contact_list' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
+                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'contact_list' %}bg-white bg-opacity-15{% endif %}">
                             <i class="fa-solid fa-address-book"></i>
                         </div>
                         <span class="text-base font-medium">Contacts</span>
