@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import RegexValidator
 import pytz
+from django.utils import timezone
+from decimal import Decimal
 
 class User(AbstractUser):
     class AccountTypes(models.TextChoices):
@@ -98,6 +100,15 @@ class User(AbstractUser):
     notifications_sms = models.BooleanField(_("Notifications SMS"), default=True)
     notifications_email = models.BooleanField(_("Notifications email"), default=True)
 
+    # Gestion des crédits
+    credits = models.DecimalField(
+        _("Crédits SMS"),
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text=_("Solde de crédits SMS disponibles")
+    )
+
     # Métadonnées
     date_creation = models.DateTimeField(_("Date de création"), auto_now_add=True)
     date_modification = models.DateTimeField(_("Dernière modification"), auto_now=True)
@@ -126,6 +137,95 @@ class User(AbstractUser):
     @property
     def is_verified(self):
         return self.verification_status == self.VerificationStatus.VERIFIE
+
+    def add_credits(self, amount):
+        """Ajoute des crédits au compte de l'utilisateur."""
+        self.credits += amount
+        self.save()
+
+    def deduct_credits(self, amount):
+        """Déduit des crédits du compte de l'utilisateur."""
+        if self.credits >= amount:
+            self.credits -= amount
+            self.save()
+            return True
+        return False
+
+    def has_sufficient_credits(self, amount):
+        """Vérifie si l'utilisateur a suffisamment de crédits."""
+        return self.credits >= amount
+
+
+class PromoCode(models.Model):
+    code = models.CharField(
+        _("Code"),
+        max_length=50,
+        unique=True,
+        help_text=_("Code promo unique")
+    )
+    discount_percentage = models.DecimalField(
+        _("Pourcentage de réduction"),
+        max_digits=5,
+        decimal_places=2,
+        help_text=_("Pourcentage de réduction à appliquer")
+    )
+    is_active = models.BooleanField(
+        _("Actif"),
+        default=True,
+        help_text=_("Indique si le code promo est actif")
+    )
+    valid_from = models.DateTimeField(
+        _("Valide à partir de"),
+        help_text=_("Date de début de validité")
+    )
+    valid_until = models.DateTimeField(
+        _("Valide jusqu'au"),
+        help_text=_("Date de fin de validité")
+    )
+    max_uses = models.PositiveIntegerField(
+        _("Utilisations maximales"),
+        null=True,
+        blank=True,
+        help_text=_("Nombre maximum d'utilisations (laissez vide pour illimité)")
+    )
+    current_uses = models.PositiveIntegerField(
+        _("Utilisations actuelles"),
+        default=0,
+        help_text=_("Nombre d'utilisations actuelles")
+    )
+    created_at = models.DateTimeField(_("Date de création"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Date de modification"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("Code promo")
+        verbose_name_plural = _("Codes promo")
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} ({self.discount_percentage}%)"
+
+    def is_valid(self):
+        """Vérifie si le code promo est valide."""
+        now = timezone.now()
+        return (
+            self.is_active and
+            self.valid_from <= now <= self.valid_until and
+            (self.max_uses is None or self.current_uses < self.max_uses)
+        )
+
+    def apply_discount(self, amount):
+        """Applique la réduction au montant."""
+        if not self.is_valid():
+            return amount
+        amount = Decimal(str(amount))
+        discount = amount * (self.discount_percentage / Decimal('100'))
+        return amount - discount
+
+    def increment_usage(self):
+        """Incrémente le compteur d'utilisations."""
+        if self.max_uses is not None:
+            self.current_uses += 1
+            self.save()
 
 
 class SenderID(models.Model):
@@ -192,3 +292,106 @@ class SenderID(models.Model):
             SenderID.objects.filter(user=self.user).exclude(pk=self.pk).update(is_default=False)
         
         super().save(*args, **kwargs)
+
+
+class CreditTransaction(models.Model):
+    class TransactionType(models.TextChoices):
+        PURCHASE = "PURCHASE", "Achat"
+        USAGE = "USAGE", "Utilisation"
+        REFUND = "REFUND", "Remboursement"
+
+    class PaymentMethod(models.TextChoices):
+        CREDIT_CARD = "CREDIT_CARD", "Carte de crédit"
+        ORANGE_MONEY = "ORANGE_MONEY", "Orange Money"
+        MTN_MONEY = "MTN_MONEY", "MTN Mobile Money"
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='credit_transactions',
+        verbose_name=_("Utilisateur")
+    )
+    transaction_type = models.CharField(
+        _("Type de transaction"),
+        max_length=20,
+        choices=TransactionType.choices
+    )
+    amount = models.DecimalField(
+        _("Montant"),
+        max_digits=10,
+        decimal_places=2
+    )
+    price = models.DecimalField(
+        _("Prix"),
+        max_digits=10,
+        decimal_places=2,
+        help_text=_("Prix total de la transaction")
+    )
+    payment_method = models.CharField(
+        _("Méthode de paiement"),
+        max_length=20,
+        choices=PaymentMethod.choices,
+        null=True,
+        blank=True
+    )
+    promo_code = models.ForeignKey(
+        PromoCode,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_("Code promo"),
+        help_text=_("Code promo appliqué à la transaction")
+    )
+    description = models.TextField(_("Description"), blank=True)
+    reference = models.CharField(
+        _("Référence"),
+        max_length=100,
+        unique=True,
+        help_text=_("Référence unique de la transaction")
+    )
+    status = models.CharField(
+        _("Statut"),
+        max_length=20,
+        choices=[
+            ('PENDING', 'En attente'),
+            ('COMPLETED', 'Complétée'),
+            ('FAILED', 'Échouée'),
+            ('REFUNDED', 'Remboursée')
+        ],
+        default='PENDING'
+    )
+    created_at = models.DateTimeField(_("Date de création"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Date de modification"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("Transaction de crédits")
+        verbose_name_plural = _("Transactions de crédits")
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user} - {self.get_transaction_type_display()} - {self.amount}"
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            # Générer une référence unique
+            from datetime import datetime
+            import random
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            random_suffix = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            self.reference = f"CRD-{timestamp}-{random_suffix}"
+
+        if self.status == 'COMPLETED' and self.transaction_type == 'PURCHASE':
+            # Ajouter les crédits au compte de l'utilisateur
+            self.user.add_credits(self.amount)
+        elif self.status == 'COMPLETED' and self.transaction_type == 'REFUND':
+            # Rembourser les crédits
+            self.user.add_credits(self.amount)
+
+        super().save(*args, **kwargs)
+
+    def process_payment(self):
+        """Traite le paiement et met à jour le statut de la transaction."""
+        # Ici, vous implémenterez la logique de paiement avec les différents fournisseurs
+        # Pour l'instant, on simule un paiement réussi
+        self.status = 'COMPLETED'
+        self.save()

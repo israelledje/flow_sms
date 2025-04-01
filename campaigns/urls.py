@@ -35,6 +35,7 @@ urlpatterns = [
     
     # API endpoints pour les contacts
     path('api/group-contacts/', views.GetGroupContactsView.as_view(), name='get_group_contacts'),
+    path('api/contact-groups/<int:group_id>/contacts/', views.ContactGroupContactsView.as_view(), name='contact_group_contacts'),
     
     # Rapports
     path('reports/', views.ReportsView.as_view(), name='reports'),

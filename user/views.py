@@ -13,12 +13,23 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count, Q
-from datetime import timedelta
+from datetime import timedelta, datetime
+from django.db.models import Sum
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.utils.decorators import method_decorator
+from django.views import View
+from decimal import Decimal
+import json
+import pytz
 
 from .forms import UserRegistrationForm, AccountDeactivationForm, SenderIDForm, SenderIDAdminForm
-from .models import User, SenderID
+from .models import User, SenderID, CreditTransaction, PromoCode
 from .backends import EmailBackend
 from campaigns.models import Campaign, Message, Contact, ContactGroup
+from campaigns.services import SMSAPIService
+from .invoices.generator import InvoiceGenerator
+from .invoices.sender import InvoiceSender
 
 class CustomLoginView(LoginView):
     template_name = 'user/login.html'
@@ -98,106 +109,192 @@ class AccountDeactivationView(LoginRequiredMixin, FormView):
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'user/dashboard.html'
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        sms_service = SMSAPIService()
         
-        # Liste vide pour le template
-        context['empty_list'] = []
+        # Statistiques de livraison sur les 30 derniers jours
+        delivery_stats = sms_service.get_delivery_stats(days=30)
         
-        # Obtenir les campagnes de l'utilisateur
-        user_campaigns = Campaign.objects.filter(user=self.request.user)
-        
-        # Obtenir les messages de l'utilisateur
-        user_messages = Message.objects.filter(campaign__user=self.request.user)
-        
-        # Calculer le nombre total de messages envoyés
-        total_messages = user_messages.count()
-        
-        # Calculer le nombre de messages délivrés
-        delivered_messages = user_messages.filter(status='delivered').count()
-        
-        # Calculer le taux de livraison
-        delivery_rate = (delivered_messages / total_messages * 100) if total_messages > 0 else 0
-        
-        # Obtenir les campagnes actives (en cours d'envoi ou programmées)
-        active_campaigns = user_campaigns.filter(
-            Q(status='sending') | 
-            Q(status='scheduled', scheduled_date__gt=timezone.now())
+        # Statistiques des campagnes
+        now = datetime.now()
+        active_campaigns = Campaign.objects.filter(
+            user=self.request.user,
+            status='active'
         ).count()
         
-        # Obtenir les campagnes se terminant bientôt (dans les 24h)
-        campaigns_ending = user_campaigns.filter(
-            status='sending',
-            updated_at__lt=timezone.now() - timedelta(hours=24)
-        ).count()
+        # Pour l'instant, on ne compte que les campagnes actives
+        campaigns_ending = 0
         
-        # Obtenir le nombre total de contacts
-        total_contacts = Contact.objects.filter(
-            message__campaign__user=self.request.user
-        ).distinct().count()
-        
-        # Obtenir les nouveaux contacts du mois
+        # Statistiques des contacts
+        total_contacts = Contact.objects.filter(user=self.request.user).count()
         new_contacts = Contact.objects.filter(
-            message__campaign__user=self.request.user,
-            message__sent_at__gte=timezone.now() - timedelta(days=30)
-        ).distinct().count()
-        
-        # Calculer la croissance des messages (comparaison avec le mois précédent)
-        last_month_messages = user_messages.filter(
-            sent_at__gte=timezone.now() - timedelta(days=30)
-        ).count()
-        previous_month_messages = user_messages.filter(
-            sent_at__gte=timezone.now() - timedelta(days=60),
-            sent_at__lt=timezone.now() - timedelta(days=30)
+            user=self.request.user,
+            created_at__gte=now - timedelta(days=30)
         ).count()
         
-        messages_growth = ((last_month_messages - previous_month_messages) / previous_month_messages * 100) if previous_month_messages > 0 else 0
+        # Statistiques des messages
+        messages_sent = Message.objects.filter(
+            campaign__user=self.request.user,
+            sent_at__gte=now - timedelta(days=30)
+        ).count()
         
-        # Statistiques du tableau de bord
+        # Calcul de la croissance des messages
+        last_month_messages = Message.objects.filter(
+            campaign__user=self.request.user,
+            sent_at__gte=now - timedelta(days=60),
+            sent_at__lt=now - timedelta(days=30)
+        ).count()
+        
+        messages_growth = 0
+        if last_month_messages > 0:
+            messages_growth = ((messages_sent - last_month_messages) / last_month_messages) * 100
+        
+        # Statistiques des crédits
+        user_credits = self.request.user.credits
+        credits_used = Message.objects.filter(
+            campaign__user=self.request.user,
+            sent_at__gte=now - timedelta(days=30)
+        ).aggregate(total=Sum('credits_used'))['total'] or 0
+        
+        # Calcul du pourcentage d'utilisation des crédits
+        credits_usage_percentage = 0
+        if user_credits > 0:
+            credits_usage_percentage = (credits_used / user_credits) * 100
+        
         context['stats'] = {
-            'messages_sent': total_messages,
+            'messages_sent': messages_sent,
             'messages_growth': round(messages_growth, 1),
             'active_campaigns': active_campaigns,
             'campaigns_ending': campaigns_ending,
             'total_contacts': total_contacts,
             'new_contacts': new_contacts,
-            'delivery_rate': round(delivery_rate, 1),
+            'delivery_rate': delivery_stats['delivery_rate'],
+            'credits': user_credits,
+            'credits_used': credits_used,
+            'credits_usage_percentage': round(credits_usage_percentage, 1)
         }
-
-        # Activités récentes
-        recent_campaigns = user_campaigns.order_by('-updated_at')[:5]
+        
+        # Activité récente
         recent_activities = []
         
-        for campaign in recent_campaigns:
-            if campaign.status == 'sent':
-                delivery_rate = (campaign.message_set.filter(status='delivered').count() / campaign.message_set.count() * 100) if campaign.message_set.exists() else 0
-                recent_activities.append({
-                    'type': 'message',
-                    'title': 'Campagne terminée',
-                    'description': f'La campagne "{campaign.name}" est terminée avec un taux de livraison de {round(delivery_rate, 1)}%',
-                    'time': f'Il y a {(timezone.now() - campaign.updated_at).days}j'
-                })
-            elif campaign.status == 'draft':
-                recent_activities.append({
-                    'type': 'campaign',
-                    'title': 'Nouvelle campagne',
-                    'description': f'La campagne "{campaign.name}" a été créée',
-                    'time': f'Il y a {(timezone.now() - campaign.created_at).days}j'
-                })
+        # Messages récents
+        recent_messages = Message.objects.filter(
+            campaign__user=self.request.user
+        ).select_related('campaign').order_by('-sent_at')[:5]
         
-        context['recent_activities'] = recent_activities
-
+        for msg in recent_messages:
+            recent_activities.append({
+                'type': 'message',
+                'title': f'Message envoyé à {msg.phone_number}',
+                'description': f'Campagne: {msg.campaign.name}',
+                'time': msg.sent_at.strftime('%d/%m/%Y %H:%M')
+            })
+        
+        # Campagnes récentes
+        recent_campaigns = Campaign.objects.filter(
+            user=self.request.user
+        ).order_by('-created_at')[:5]
+        
+        for campaign in recent_campaigns:
+            recent_activities.append({
+                'type': 'campaign',
+                'title': f'Nouvelle campagne: {campaign.name}',
+                'description': f'Statut: {campaign.get_status_display()}',
+                'time': campaign.created_at.strftime('%d/%m/%Y %H:%M')
+            })
+        
+        context['recent_activities'] = sorted(
+            recent_activities,
+            key=lambda x: datetime.strptime(x['time'], '%d/%m/%Y %H:%M'),
+            reverse=True
+        )[:5]
+        
         return context
 
-class ProfileView(LoginRequiredMixin, TemplateView):
+class ProfileView(LoginRequiredMixin, View):
     template_name = 'user/profile.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['user'] = self.request.user
-        return context
+    def get(self, request):
+        context = {
+            'user': request.user,
+            'LANGUAGE_CHOICES': User.LANGUAGE_CHOICES,
+            'TIMEZONE_CHOICES': [(tz, tz) for tz in pytz.all_timezones],
+        }
+        return render(request, self.template_name, context)
 
+    def post(self, request):
+        action = request.POST.get('action', '')
+        user = request.user
+
+        if action == 'personal_info':
+            try:
+                # Mise à jour des informations personnelles
+                if user.account_type == 'ENTREPRISE':
+                    user.nom = request.POST.get('nom')
+                    user.secteur_activite = request.POST.get('secteur_activite')
+                    user.niu = request.POST.get('niu')
+                    user.rccm = request.POST.get('rccm')
+                    user.site_web = request.POST.get('site_web')
+                    user.nombre_employes = request.POST.get('nombre_employes')
+                else:
+                    user.nom = request.POST.get('nom')
+                    user.prenom = request.POST.get('prenom')
+                
+                user.telephone = request.POST.get('telephone')
+                user.email = request.POST.get('email')
+                user.save()
+                
+                messages.success(request, "Informations personnelles mises à jour avec succès")
+            except Exception as e:
+                messages.error(request, f"Erreur lors de la mise à jour: {str(e)}")
+
+        elif action == 'address':
+            try:
+                # Mise à jour de l'adresse
+                user.adresse = request.POST.get('adresse')
+                user.ville = request.POST.get('ville')
+                user.pays = request.POST.get('pays')
+                user.save()
+                
+                messages.success(request, "Adresse mise à jour avec succès")
+            except Exception as e:
+                messages.error(request, f"Erreur lors de la mise à jour: {str(e)}")
+
+        elif action == 'preferences':
+            try:
+                # Mise à jour des préférences
+                user.langue = request.POST.get('langue')
+                user.fuseau_horaire = request.POST.get('fuseau_horaire')
+                user.notifications_sms = request.POST.get('notifications_sms') == 'on'
+                user.notifications_email = request.POST.get('notifications_email') == 'on'
+                user.save()
+                
+                messages.success(request, "Préférences mises à jour avec succès")
+            except Exception as e:
+                messages.error(request, f"Erreur lors de la mise à jour: {str(e)}")
+
+        elif action == 'security':
+            try:
+                # Changement de mot de passe
+                current_password = request.POST.get('current_password')
+                new_password1 = request.POST.get('new_password1')
+                new_password2 = request.POST.get('new_password2')
+
+                if not user.check_password(current_password):
+                    messages.error(request, "Le mot de passe actuel est incorrect")
+                elif new_password1 != new_password2:
+                    messages.error(request, "Les nouveaux mots de passe ne correspondent pas")
+                else:
+                    user.set_password(new_password1)
+                    user.save()
+                    update_session_auth_hash(request, user)  # Maintient la session active
+                    messages.success(request, "Mot de passe modifié avec succès")
+            except Exception as e:
+                messages.error(request, f"Erreur lors du changement de mot de passe: {str(e)}")
+
+        return redirect('user:profile')
 
 class SettingsView(LoginRequiredMixin, TemplateView):
     template_name = 'user/settings.html'
@@ -327,3 +424,248 @@ def sender_id_admin_review(request, pk):
         'form': form,
         'sender_id': sender_id
     })
+
+class CreditPurchaseView(LoginRequiredMixin, View):
+    template_name = 'user/credit_purchase.html'
+    
+    def get(self, request):
+        context = {
+            'credit_packages': [
+                {'amount': 100, 'price': 1000, 'bonus': 0},
+                {'amount': 500, 'price': 4500, 'bonus': 50},
+                {'amount': 1000, 'price': 8000, 'bonus': 150},
+                {'amount': 2000, 'price': 15000, 'bonus': 400},
+            ],
+            'user': request.user,
+            'is_staff': request.user.is_staff
+        }
+        return render(request, self.template_name, context)
+
+@method_decorator(require_POST, name='dispatch')
+class ProcessPaymentView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            amount = int(data.get('amount', 0))
+            price = Decimal(str(data.get('price', 0)))  # Conversion en Decimal
+            payment_method = data.get('payment_method')
+            promo_code = data.get('promo_code')
+
+            # Vérifier le code promo si fourni
+            final_price = price
+            promo_instance = None
+            if promo_code:
+                try:
+                    promo_instance = PromoCode.objects.get(code=promo_code)
+                    if promo_instance.is_valid():
+                        final_price = promo_instance.apply_discount(price)
+                        promo_instance.increment_usage()
+                    else:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Code promo invalide ou expiré'
+                        })
+                except PromoCode.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Code promo non trouvé'
+                    })
+
+            # Créer la transaction
+            transaction = CreditTransaction.objects.create(
+                user=request.user,
+                transaction_type='PURCHASE',
+                amount=amount,
+                price=final_price,
+                payment_method=payment_method,
+                promo_code=promo_instance,
+                status='PENDING'
+            )
+
+            # Simuler le traitement du paiement
+            transaction.process_payment()
+
+            # Générer et envoyer la facture
+            try:
+                # Générer la facture PDF
+                invoice_generator = InvoiceGenerator(transaction)
+                invoice_filename = invoice_generator.generate()
+
+                # Envoyer la facture par email
+                InvoiceSender.send_invoice(request.user, invoice_filename)
+            except Exception as e:
+                print(f"Erreur lors de la génération/envoi de la facture: {str(e)}")
+                # Ne pas bloquer la transaction si la facture échoue
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Paiement traité avec succès. La facture a été envoyée à votre adresse email.',
+                'transaction_id': transaction.id
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+
+class TransactionHistoryView(LoginRequiredMixin, TemplateView):
+    template_name = 'user/transaction_history.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['transactions'] = CreditTransaction.objects.filter(
+            user=self.request.user
+        ).order_by('-created_at')
+        return context
+
+class VerifyPromoCodeView(LoginRequiredMixin, View):
+    def get(self, request):
+        code = request.GET.get('code')
+        if not code:
+            return JsonResponse({
+                'success': False,
+                'message': 'Code promo requis'
+            })
+
+        try:
+            promo = PromoCode.objects.get(code=code)
+            if promo.is_valid():
+                return JsonResponse({
+                    'success': True,
+                    'discount': float(promo.discount_percentage)
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Code promo invalide ou expiré'
+                })
+        except PromoCode.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Code promo non trouvé'
+            })
+
+class PromoCodeAdminView(LoginRequiredMixin, View):
+    def get(self, request):
+        if not request.user.is_staff:
+            messages.error(request, "Vous n'avez pas les permissions nécessaires.")
+            return redirect('user:dashboard')
+            
+        promo_codes = PromoCode.objects.all().order_by('-created_at')
+        return render(request, 'user/admin/promo_codes.html', {
+            'promo_codes': promo_codes
+        })
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return JsonResponse({
+                'success': False,
+                'message': 'Permission refusée'
+            }, status=403)
+
+        try:
+            data = json.loads(request.body)
+            promo = PromoCode.objects.create(
+                code=data['code'],
+                discount_percentage=data['discount_percentage'],
+                valid_from=data['valid_from'],
+                valid_until=data['valid_until'],
+                max_uses=data.get('max_uses'),
+                is_active=data['is_active']
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Code promo créé avec succès'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
+
+class PromoCodeDetailView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        if not request.user.is_staff:
+            return JsonResponse({
+                'success': False,
+                'message': 'Permission refusée'
+            }, status=403)
+
+        try:
+            promo = PromoCode.objects.get(pk=pk)
+            return JsonResponse({
+                'id': promo.id,
+                'code': promo.code,
+                'discount_percentage': float(promo.discount_percentage),
+                'valid_from': promo.valid_from.isoformat(),
+                'valid_until': promo.valid_until.isoformat(),
+                'max_uses': promo.max_uses,
+                'is_active': promo.is_active
+            })
+        except PromoCode.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Code promo non trouvé'
+            }, status=404)
+
+    def put(self, request, pk):
+        if not request.user.is_staff:
+            return JsonResponse({
+                'success': False,
+                'message': 'Permission refusée'
+            }, status=403)
+
+        try:
+            data = json.loads(request.body)
+            promo = PromoCode.objects.get(pk=pk)
+            
+            promo.code = data['code']
+            promo.discount_percentage = data['discount_percentage']
+            promo.valid_from = data['valid_from']
+            promo.valid_until = data['valid_until']
+            promo.max_uses = data.get('max_uses')
+            promo.is_active = data['is_active']
+            promo.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Code promo mis à jour avec succès'
+            })
+        except PromoCode.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Code promo non trouvé'
+            }, status=404)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return JsonResponse({
+                'success': False,
+                'message': 'Permission refusée'
+            }, status=403)
+
+        try:
+            promo = PromoCode.objects.get(pk=pk)
+            promo.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Code promo supprimé avec succès'
+            })
+        except PromoCode.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Code promo non trouvé'
+            }, status=404)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)

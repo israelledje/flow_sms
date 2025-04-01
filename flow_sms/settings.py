@@ -185,3 +185,11 @@ CELERY_TASK_SERIALIZER = 'json'
 # Augmenter la limite de taille des données
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5 MB
+
+# Configuration des médias
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Créer le dossier media s'il n'existe pas
+if not os.path.exists(MEDIA_ROOT):
+    os.makedirs(MEDIA_ROOT)

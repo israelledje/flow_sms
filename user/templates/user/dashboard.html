@@ -10,23 +10,19 @@
     <!-- Stats Overview -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Messages envoyés -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-300">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Messages envoyés</p>
                     <p class="text-2xl font-bold text-gray-900 mt-2">{{ stats.messages_sent|default:"0" }}</p>
                 </div>
                 <div class="bg-blue-50 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"/>
-                    </svg>
+                    <i class="fa-solid fa-message text-blue-600 text-xl"></i>
                 </div>
             </div>
             <div class="mt-4 flex items-center text-sm">
                 <span class="text-green-500 flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-                    </svg>
+                    <i class="fa-solid fa-arrow-trend-up mr-1"></i>
                     +{{ stats.messages_growth|default:"0" }}%
                 </span>
                 <span class="text-gray-400 ml-2">vs mois dernier</span>
@@ -34,42 +30,38 @@
         </div>
 
         <!-- Campagnes actives -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-300">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Campagnes actives</p>
                     <p class="text-2xl font-bold text-gray-900 mt-2">{{ stats.active_campaigns|default:"0" }}</p>
                 </div>
                 <div class="bg-orange-50 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
-                    </svg>
+                    <i class="fa-solid fa-bullhorn text-orange-600 text-xl"></i>
                 </div>
             </div>
             <div class="mt-4 flex items-center text-sm">
-                <span class="text-orange-500">{{ stats.campaigns_ending|default:"0" }} campagne(s) se termine(nt) bientôt</span>
+                <span class="text-orange-500">
+                    <i class="fa-solid fa-clock mr-1"></i>
+                    {{ stats.campaigns_ending|default:"0" }} campagne(s) se termine(nt) bientôt
+                </span>
             </div>
         </div>
 
         <!-- Contacts -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-300">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Total contacts</p>
                     <p class="text-2xl font-bold text-gray-900 mt-2">{{ stats.total_contacts|default:"0" }}</p>
                 </div>
                 <div class="bg-green-50 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                    </svg>
+                    <i class="fa-solid fa-address-book text-green-600 text-xl"></i>
                 </div>
             </div>
             <div class="mt-4 flex items-center text-sm">
                 <span class="text-green-500 flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
+                    <i class="fa-solid fa-user-plus mr-1"></i>
                     {{ stats.new_contacts|default:"0" }} nouveaux
                 </span>
                 <span class="text-gray-400 ml-2">ce mois</span>
@@ -77,21 +69,19 @@
         </div>
 
         <!-- Taux de livraison -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-300">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Taux de livraison</p>
                     <p class="text-2xl font-bold text-gray-900 mt-2">{{ stats.delivery_rate|default:"0" }}%</p>
                 </div>
                 <div class="bg-purple-50 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+                    <i class="fa-solid fa-check-circle text-purple-600 text-xl"></i>
                 </div>
             </div>
             <div class="mt-4">
                 <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-purple-600 rounded-full h-2" style="width: {{ stats.delivery_rate|default:'0' }}%"></div>
+                    <div class="bg-purple-600 rounded-full h-2 transition-all duration-500" style="width: {{ stats.delivery_rate|default:'0' }}%"></div>
                 </div>
             </div>
         </div>
@@ -106,26 +96,20 @@
                     <h3 class="text-lg font-semibold text-gray-900">Activité récente</h3>
                 </div>
                 <div class="divide-y divide-gray-100">
-                    {% for activity in recent_activities|default:empty_list %}
-                    <div class="p-6 flex items-center space-x-4">
+                    {% for activity in recent_activities %}
+                    <div class="p-6 flex items-center space-x-4 hover:bg-gray-50 transition-colors duration-200">
                         <div class="flex-shrink-0">
                             {% if activity.type == 'message' %}
                             <div class="bg-blue-100 rounded-lg p-2">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"/>
-                                </svg>
+                                <i class="fa-solid fa-message text-blue-600"></i>
                             </div>
                             {% elif activity.type == 'campaign' %}
                             <div class="bg-orange-100 rounded-lg p-2">
-                                <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
-                                </svg>
+                                <i class="fa-solid fa-bullhorn text-orange-600"></i>
                             </div>
                             {% else %}
                             <div class="bg-gray-100 rounded-lg p-2">
-                                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                                <i class="fa-solid fa-info-circle text-gray-600"></i>
                             </div>
                             {% endif %}
                         </div>
@@ -147,14 +131,12 @@
         <!-- Quick Actions -->
         <div class="space-y-6">
             <!-- New Campaign -->
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg text-white p-6">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg text-white p-6 hover:shadow-xl transition-shadow duration-300">
                 <h3 class="text-lg font-semibold">Nouvelle campagne</h3>
                 <p class="mt-2 text-blue-100">Créez une nouvelle campagne SMS en quelques clics</p>
                 <a href="{% url 'campaigns:create' %}" class="mt-4 inline-flex items-center px-4 py-2 bg-white text-blue-600 rounded-lg font-medium text-sm hover:bg-blue-50 transition-colors">
                     Commencer
-                    <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7m0 0l7-7-7-7"/>
-                    </svg>
+                    <i class="fa-solid fa-arrow-right ml-2"></i>
                 </a>
             </div>
 
@@ -165,37 +147,43 @@
                 </div>
                 <div class="p-6 space-y-4">
                     <a href="{% url 'user:contacts' %}" class="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                        </svg>
+                        <i class="fa-solid fa-user-plus text-gray-400 mr-3"></i>
                         Ajouter des contacts
                     </a>
                     <a href="{% url 'campaigns:reports' %}" class="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                        </svg>
+                        <i class="fa-solid fa-chart-bar text-gray-400 mr-3"></i>
                         Voir les rapports
                     </a>
                     <a href="{% url 'user:settings' %}" class="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
+                        <i class="fa-solid fa-gear text-gray-400 mr-3"></i>
                         Paramètres
                     </a>
                 </div>
             </div>
 
             <!-- Credit -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="p-6 border-b border-gray-100">
-                    <h3 class="text-lg font-semibold text-gray-900">Crédits</h3>
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg text-white p-6 hover:shadow-xl transition-shadow duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Crédits SMS</h3>
+                    <div class="bg-white/10 rounded-lg p-2">
+                        <i class="fa-solid fa-circle-dollar-to-slot text-xl"></i>
+                    </div>
                 </div>
-                <div class="p-4 space-y-4">
-                    <p class="text-gray-700">Vous avez {{ stats.credits|default:'0' }} crédits</p>
-                    <a href="#" class="flex items-center text-blue-600 hover:text-blue-700 transition-colors">
-                        <i class="fa-solid fa-circle-dollar-to-slot"></i>
-                        <p>Acheter des crédits</p>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-emerald-100">Solde actuel</span>
+                        <span class="text-2xl font-bold">{{ stats.credits|default:'0' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-emerald-100">Consommés ce mois</span>
+                        <span class="font-medium">{{ stats.credits_used|default:'0' }}</span>
+                    </div>
+                    <div class="w-full bg-white/10 rounded-full h-2">
+                        <div class="bg-white rounded-full h-2 transition-all duration-500" style="width: {{ stats.credits_usage_percentage|default:'0' }}%"></div>
+                    </div>
+                    <a href="{% url 'user:credit_purchase' %}" class="mt-4 inline-flex items-center justify-center w-full px-4 py-2 bg-white text-emerald-600 rounded-lg font-medium text-sm hover:bg-emerald-50 transition-colors">
+                        <i class="fa-solid fa-plus mr-2"></i>
+                        Acheter des crédits
                     </a>
                 </div>
             </div>

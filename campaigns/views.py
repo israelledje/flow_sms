@@ -18,6 +18,9 @@ from openpyxl import Workbook
 from django.core.exceptions import ValidationError
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 
 class SenderIdListView(LoginRequiredMixin, ListView):
     model = SenderId
@@ -55,16 +58,44 @@ class SenderIdCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 class ContactListView(LoginRequiredMixin, ListView):
-    model = Contact
+    model = ContactGroup
     template_name = 'campaigns/contact_list.html'
-    context_object_name = 'contacts'
+    context_object_name = 'contact_groups'
 
     def get_queryset(self):
-        return Contact.objects.filter(user=self.request.user)
+        return ContactGroup.objects.filter(user=self.request.user).prefetch_related('contacts')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['contact_groups'] = ContactGroup.objects.filter(user=self.request.user)
+        
+        # Calculer les statistiques pour chaque groupe
+        for group in context['contact_groups']:
+            # Nombre de contacts dans le groupe
+            group.contact_count = group.contacts.count()
+            
+            # Statistiques des SMS
+            group.total_sms = 0
+            group.delivered_sms = 0
+            
+            # Récupérer tous les contacts du groupe
+            contact_ids = group.contacts.values_list('id', flat=True)
+            
+            # Compter les SMS envoyés aux contacts du groupe
+            from campaigns.models import Message
+            messages = Message.objects.filter(
+                contact_id__in=contact_ids,
+                campaign__user=self.request.user
+            )
+            
+            group.total_sms = messages.count()
+            group.delivered_sms = messages.filter(status='delivered').count()
+            
+            # Calculer le taux de livraison
+            if group.total_sms > 0:
+                group.delivery_rate = (group.delivered_sms / group.total_sms) * 100
+            else:
+                group.delivery_rate = 0
+
         return context
 
 class ContactCreateView(LoginRequiredMixin, CreateView):
@@ -119,7 +150,7 @@ class CampaignListView(LoginRequiredMixin, ListView):
 class CampaignCreateView(LoginRequiredMixin, CreateView):
     model = Campaign
     template_name = 'campaigns/campaign_form.html'
-    fields = ['name', 'message_content', 'sender', 'scheduled_date', 'is_rich_sms', 'rich_content']
+    fields = ['name', 'description', 'message', 'sender_id', 'start_date', 'end_date']
 
     def get_success_url(self):
         return reverse('campaigns:campaign_list')
@@ -137,112 +168,39 @@ class CampaignCreateView(LoginRequiredMixin, CreateView):
             if user.is_staff or user.is_superuser:
                 user_approved_senders = User_SenderId.objects.filter(status="APPROUVE")
             else:
-                # Sinon, l'utilisateur ne peut voir que ses propres Sender IDs approuvés
-                user_approved_senders = User_SenderId.objects.filter(
-                    user=user,
-                    status="APPROUVE"
-                )
+                user_approved_senders = User_SenderId.objects.filter(user=user, status="APPROUVE")
             
-            # Récupérer ou créer les SenderId de l'application campaigns correspondants
-            campaign_senders = []
+            # Créer ou mettre à jour les Sender IDs dans l'application campaigns
             for user_sender in user_approved_senders:
-                campaign_sender, created = SenderId.objects.get_or_create(
+                SenderId.objects.get_or_create(
                     user_sender_id=user_sender,
                     defaults={
                         'name': user_sender.name,
-                        'user': user,
-                        'status': 'approved'
+                        'status': 'approved',
+                        'user': user_sender.user
                     }
                 )
-                campaign_senders.append(campaign_sender)
             
-            context['senders'] = campaign_senders
-                
+            # Récupérer les Sender IDs approuvés pour l'affichage
+            context['sender_ids'] = SenderId.objects.filter(
+                user=user,
+                status='approved'
+            )
         except Exception as e:
-            print(f"DEBUG - Erreur en essayant de récupérer les Sender IDs depuis l'app user: {str(e)}")
-            if user.is_staff or user.is_superuser:
-                context['senders'] = SenderId.objects.filter(status='approved')
-            else:
-                context['senders'] = SenderId.objects.filter(
-                    user=user,
-                    status='approved'
-                )
+            context['sender_ids'] = []
+            messages.warning(self.request, f"Erreur lors du chargement des Sender IDs: {str(e)}")
         
         # Ajouter les groupes de contacts au contexte
         context['contact_groups'] = ContactGroup.objects.filter(user=user)
+        
+        # Ajouter le solde SMS de l'utilisateur
+        context['sms_balance'] = user.credits
         
         return context
 
     def form_valid(self, form):
         form.instance.user = self.request.user
-        
-        # Sauvegarde la campagne
-        self.object = form.save()
-        
-        # Récupérer et traiter les numéros de contact
-        contact_numbers = self.request.POST.get('contact_numbers', '')
-        if contact_numbers:
-            # Créer ou récupérer les contacts et les associer à la campagne
-            numbers = [num.strip() for num in contact_numbers.split(',') if num.strip()]
-            for number in numbers:
-                # Validation basique du numéro
-                if not number or not re.match(r'^237[0-9]{8,9}$', number):
-                    continue
-                
-                # Créer ou récupérer le contact
-                contact, created = Contact.objects.get_or_create(
-                    phone_number=number,
-                    user=self.request.user
-                )
-                
-                # Associer le contact à la campagne via le modèle Message
-                Message.objects.create(
-                    campaign=self.object,
-                    contact=contact,
-                    content=self.object.message_content,
-                    is_rich_sms=self.object.is_rich_sms,
-                    rich_content=self.object.rich_content,
-                    sender=self.object.sender
-                )
-        
-        # Gérer l'action selon le bouton cliqué
-        action = self.request.POST.get('action', 'save')
-        if action == 'start':
-            try:
-                campaign = self.object
-                
-                # Si la date planifiée est dans le futur, changer le statut à 'scheduled'
-                if campaign.scheduled_date and campaign.scheduled_date > timezone.now():
-                    campaign.status = 'scheduled'
-                    campaign.save()
-                    messages.success(self.request, f"La campagne '{campaign.name}' a été programmée pour {campaign.scheduled_date}.")
-                else:
-                    # Sinon, démarrer la campagne immédiatement
-                    campaign.status = 'sending'
-                    campaign.save()
-                    campaign.send()
-                    messages.success(self.request, f"La campagne '{campaign.name}' a été démarrée avec succès.")
-            except Exception as e:
-                messages.error(self.request, f"Erreur lors du démarrage de la campagne: {str(e)}")
-        else:
-            # Même en mode "save", vérifier si une date est programmée
-            if self.object.scheduled_date and self.object.scheduled_date > timezone.now():
-                self.object.status = 'scheduled'
-                self.object.save()
-                messages.success(self.request, f"La campagne '{self.object.name}' a été programmée pour {self.object.scheduled_date}.")
-            else:
-                messages.success(self.request, f"La campagne '{self.object.name}' a été enregistrée en tant que brouillon.")
-        
-        return redirect('campaigns:campaign_list')
-        
-    def form_invalid(self, form):
-        # Ajouter un message pour aider l'utilisateur à comprendre pourquoi le formulaire n'est pas valide
-        errors = form.errors.as_data()
-        for field, error_list in errors.items():
-            for error in error_list:
-                messages.error(self.request, f"Erreur: {field} - {error.message}")
-        
-        return super().form_invalid(form)
+        return super().form_valid(form)
 
 class CampaignDetailView(LoginRequiredMixin, DetailView):
     model = Campaign
@@ -809,3 +767,43 @@ class AddContactsToGroupView(LoginRequiredMixin, View):
                 'status': 'error',
                 'message': str(e)
             }, status=400)
+
+class ContactGroupContactsView(LoginRequiredMixin, View):
+    def get(self, request, group_id):
+        try:
+            group = ContactGroup.objects.get(id=group_id, user=request.user)
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 5))
+
+            # Récupérer les contacts du groupe
+            contacts = group.contacts.all()
+            
+            # Calculer la pagination
+            total_contacts = contacts.count()
+            total_pages = (total_contacts + page_size - 1) // page_size
+            
+            # Récupérer les contacts de la page demandée
+            start = (page - 1) * page_size
+            end = start + page_size
+            page_contacts = contacts[start:end]
+
+            # Formater les contacts pour la réponse
+            contacts_data = [{
+                'id': contact.id,
+                'phone_number': contact.phone_number,
+                'first_name': contact.first_name,
+                'last_name': contact.last_name,
+                'email': contact.email
+            } for contact in page_contacts]
+
+            return JsonResponse({
+                'contacts': contacts_data,
+                'total_contacts': total_contacts,
+                'total_pages': total_pages,
+                'current_page': page
+            })
+
+        except ContactGroup.DoesNotExist:
+            return JsonResponse({'error': 'Groupe non trouvé'}, status=404)
+        except ValueError:
+            return JsonResponse({'error': 'Paramètres de pagination invalides'}, status=400)

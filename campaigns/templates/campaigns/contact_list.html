@@ -7,19 +7,6 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Gestion des contacts</h1>
         <div class="flex space-x-4">
-            <!-- Bouton Ajouter au groupe -->
-            <div class="relative">
-                <button id="addToGroupBtn" disabled class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors opacity-50 cursor-not-allowed">
-                    <i class="fas fa-users mr-2"></i>Ajouter au groupe
-                </button>
-                <div id="groupDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
-                    {% for group in contact_groups %}
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-group-id="{{ group.id }}">
-                        {{ group.name }}
-                    </a>
-                    {% endfor %}
-                </div>
-            </div>
             <button onclick="openImportModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                 <i class="fas fa-file-import mr-2"></i>Importer
             </button>
@@ -50,76 +37,126 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Rechercher</label>
-                <input type="text" id="search" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Nom, numéro ou email...">
-            </div>
-            <div>
-                <label for="group_filter" class="block text-sm font-medium text-gray-700 mb-1">Groupe</label>
-                <select id="group_filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Tous les groupes</option>
-                    {% for group in contact_groups %}
-                    <option value="{{ group.id }}">{{ group.name }}</option>
-                    {% endfor %}
-                </select>
+                <input type="text" id="search" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Nom du groupe...">
             </div>
         </div>
     </div>
 
-    <!-- Liste des contacts -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <!-- Liste des groupes en mode kanban -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for group in contact_groups %}
+        <div class="bg-white rounded-xl shadow-md overflow-hidden group-card cursor-pointer hover:shadow-lg transition-shadow" data-group-id="{{ group.id }}">
+            <div class="p-6">
+                <!-- En-tête du groupe -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">{{ group.name }}</h2>
+                            <p class="text-sm text-gray-500">{{ group.description|truncatechars:50 }}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <a href="{% url 'campaigns:contact_group_edit' group.pk %}" class="text-blue-600 hover:text-blue-900" onclick="event.stopPropagation();">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'campaigns:contact_group_delete' group.pk %}" class="text-red-600 hover:text-red-900" onclick="event.stopPropagation();">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="text-sm text-gray-500">Contacts</div>
+                        <div class="text-2xl font-semibold text-gray-900">{{ group.contact_count }}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="text-sm text-gray-500">SMS envoyés</div>
+                        <div class="text-2xl font-semibold text-gray-900">{{ group.total_sms }}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="text-sm text-gray-500">SMS livrés</div>
+                        <div class="text-2xl font-semibold text-gray-900">{{ group.delivered_sms }}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="text-sm text-gray-500">Taux de livraison</div>
+                        <div class="text-2xl font-semibold text-gray-900">{{ group.delivery_rate|floatformat:1 }}%</div>
+                    </div>
+                </div>
+
+                <!-- Bouton pour voir les contacts -->
+                <button class="w-full bg-blue-600 text-white rounded-lg py-2 hover:bg-blue-700 transition-colors flex items-center justify-center">
+                    <i class="fas fa-list mr-2"></i>Voir les contacts
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full bg-white rounded-xl shadow-md p-6 text-center text-gray-500">
+            Aucun groupe de contacts trouvé. Créez d'abord un groupe pour commencer.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal des contacts -->
+<div id="contactsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-6 border w-[800px] shadow-xl rounded-lg bg-white transform transition-all">
+        <div class="mt-3">
+            <!-- En-tête de la modale -->
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-900" id="modalGroupName"></h3>
+                    <p class="text-sm text-gray-500 mt-1">Liste des contacts du groupe</p>
+                </div>
+                <button onclick="closeContactsModal()" class="text-gray-400 hover:text-gray-500 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Filtres et pagination -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <label class="text-sm text-gray-700">Contacts par page:</label>
+                    <select id="pageSize" class="border border-gray-300 rounded-lg px-3 py-1">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span id="pageInfo" class="text-sm text-gray-700">Page 1 sur 1</span>
+                    <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table des contacts -->
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
-                            <input type="checkbox" id="selectAll" class="form-check-input">
-                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Numéro</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prénom</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Groupes</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for contact in contacts %}
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <input type="checkbox" class="form-check-input contact-checkbox" data-contact-id="{{ contact.id }}">
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ contact.phone_number }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ contact.first_name|default:"-" }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ contact.last_name|default:"-" }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ contact.email|default:"-" }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ contact.group_names|default:"-" }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <a href="{% url 'campaigns:contact_update' contact.pk %}" class="text-blue-600 hover:text-blue-900 mr-4">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="{% url 'campaigns:contact_delete' contact.pk %}" class="text-red-600 hover:text-red-900">
-                                <i class="fas fa-trash"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
-                            Aucun contact trouvé
-                        </td>
-                    </tr>
-                    {% endfor %}
+                    <tbody id="contactsTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Les contacts seront chargés ici dynamiquement -->
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>
@@ -223,7 +260,151 @@
 
 {% block extra_scripts %}
 <script>
+    // Définir les URLs de base
+    const CONTACT_UPDATE_URL = "{% url 'campaigns:contact_update' 0 %}".slice(0, -1);
+    const CONTACT_DELETE_URL = "{% url 'campaigns:contact_delete' 0 %}".slice(0, -1);
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Variables pour la pagination
+    let currentPage = 1;
+    let pageSize = 5;
+    let totalPages = 1;
+    let currentGroupId = null;
+    let contacts = [];
+
+    // Gestion des cartes de groupe
+    document.querySelectorAll('.group-card').forEach(card => {
+        card.addEventListener('click', function() {
+            currentGroupId = this.dataset.groupId;
+            const groupName = this.querySelector('h2').textContent;
+            openContactsModal(groupName);
+            loadContacts();
+        });
+    });
+
+    // Gestion du modal des contacts
+    const contactsModal = document.getElementById('contactsModal');
+    const modalGroupName = document.getElementById('modalGroupName');
+    const contactsTableBody = document.getElementById('contactsTableBody');
+    const pageSizeSelect = document.getElementById('pageSize');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    const pageInfo = document.getElementById('pageInfo');
+
+    function openContactsModal(groupName) {
+        modalGroupName.textContent = groupName;
+        contactsModal.classList.remove('hidden');
+    }
+
+    function closeContactsModal() {
+        contactsModal.classList.add('hidden');
+        currentPage = 1;
+        contacts = [];
+        updatePagination();
+        contactsTableBody.innerHTML = '';
+    }
+
+    // Gestion de la pagination
+    pageSizeSelect.addEventListener('change', function() {
+        pageSize = parseInt(this.value);
+        currentPage = 1;
+        loadContacts();
+    });
+
+    prevPageBtn.addEventListener('click', function() {
+        if (currentPage > 1) {
+            currentPage--;
+            loadContacts();
+        }
+    });
+
+    nextPageBtn.addEventListener('click', function() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadContacts();
+        }
+    });
+
+    function updatePagination() {
+        totalPages = Math.ceil(contacts.length / pageSize);
+        pageInfo.textContent = `Page ${currentPage} sur ${totalPages}`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages;
+    }
+
+    // Chargement des contacts
+    function loadContacts() {
+        if (!currentGroupId) return;
+
+        fetch(`/campaigns/api/contact-groups/${currentGroupId}/contacts/?page=${currentPage}&page_size=${pageSize}`, {
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => response.json())
+            .then(data => {
+                contacts = data.contacts;
+                updatePagination();
+                renderContacts();
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des contacts:', error);
+                showToast('Erreur lors du chargement des contacts', 'error');
+            });
+    }
+
+    function renderContacts() {
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageContacts = contacts.slice(start, end);
+
+        contactsTableBody.innerHTML = pageContacts.map(contact => `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${contact.phone_number}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${contact.first_name || '-'}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${contact.last_name || '-'}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">${contact.email || '-'}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <a href="${CONTACT_UPDATE_URL}${contact.id}/" class="text-blue-600 hover:text-blue-900 mr-4" onclick="event.stopPropagation();">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="${CONTACT_DELETE_URL}${contact.id}/" class="text-red-600 hover:text-red-900" onclick="event.stopPropagation();">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Recherche
+    const searchInput = document.getElementById('search');
+    searchInput.addEventListener('input', filterGroups);
+
+    function filterGroups() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const groups = document.querySelectorAll('.group-card');
+
+        groups.forEach(group => {
+            const groupName = group.querySelector('h2').textContent.toLowerCase();
+            const groupDescription = group.querySelector('p').textContent.toLowerCase();
+            
+            if (groupName.includes(searchTerm) || groupDescription.includes(searchTerm)) {
+                group.style.display = '';
+            } else {
+                group.style.display = 'none';
+            }
+        });
+    }
+
     // Éléments DOM
     const importModal = document.getElementById('importModal');
     const fileInput = document.getElementById('fileInput');
@@ -385,124 +566,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Recherche et filtres
-    const searchInput = document.getElementById('search');
-    const groupFilter = document.getElementById('group_filter');
-
-    searchInput.addEventListener('input', filterContacts);
-    groupFilter.addEventListener('change', filterContacts);
-
-    function filterContacts() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const groupId = groupFilter.value;
-        const rows = document.querySelectorAll('tbody tr');
-
-        rows.forEach(row => {
-            const name = row.cells[0].textContent.toLowerCase();
-            const number = row.cells[1].textContent.toLowerCase();
-            const email = row.cells[2].textContent.toLowerCase();
-            const groups = row.cells[3].textContent.toLowerCase();
-
-            const matchesSearch = name.includes(searchTerm) || 
-                                number.includes(searchTerm) || 
-                                email.includes(searchTerm) ||
-                                groups.includes(searchTerm);
-
-            const matchesGroup = !groupId || groups.includes(groupId);
-
-            row.style.display = matchesSearch && matchesGroup ? '' : 'none';
-        });
-    }
-
-    // Gestion de la sélection multiple
-    const selectAllCheckbox = document.getElementById('selectAll');
-    const contactCheckboxes = document.querySelectorAll('.contact-checkbox');
-    const addToGroupBtn = document.getElementById('addToGroupBtn');
-    const groupDropdown = document.getElementById('groupDropdown');
-    
-    // Sélectionner/Désélectionner tout
-    selectAllCheckbox.addEventListener('change', function() {
-        contactCheckboxes.forEach(checkbox => {
-            checkbox.checked = this.checked;
-        });
-        updateAddToGroupButton();
-    });
-    
-    // Mettre à jour le bouton quand une case est cochée
-    contactCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateAddToGroupButton);
-    });
-    
-    // Activer/Désactiver le bouton selon la sélection
-    function updateAddToGroupButton() {
-        const checkedBoxes = document.querySelectorAll('.contact-checkbox:checked');
-        const isDisabled = checkedBoxes.length === 0;
-        
-        addToGroupBtn.disabled = isDisabled;
-        addToGroupBtn.classList.toggle('opacity-50', isDisabled);
-        addToGroupBtn.classList.toggle('cursor-not-allowed', isDisabled);
-        
-        if (checkedBoxes.length > 0) {
-            addToGroupBtn.innerHTML = `<i class="fas fa-users mr-2"></i>Ajouter au groupe (${checkedBoxes.length})`;
-        } else {
-            addToGroupBtn.innerHTML = '<i class="fas fa-users mr-2"></i>Ajouter au groupe';
-        }
-    }
-    
-    // Gérer l'affichage du dropdown
-    addToGroupBtn.addEventListener('click', function() {
-        if (!this.disabled) {
-            groupDropdown.classList.toggle('hidden');
-        }
-    });
-    
-    // Fermer le dropdown en cliquant ailleurs
-    document.addEventListener('click', function(e) {
-        if (!addToGroupBtn.contains(e.target) && !groupDropdown.contains(e.target)) {
-            groupDropdown.classList.add('hidden');
-        }
-    });
-    
-    // Gérer la sélection d'un groupe
-    document.querySelectorAll('#groupDropdown a').forEach(item => {
-        item.addEventListener('click', async function(e) {
-            e.preventDefault();
-            const groupId = this.dataset.groupId;
-            const checkedBoxes = document.querySelectorAll('.contact-checkbox:checked');
-            const contactIds = Array.from(checkedBoxes).map(cb => cb.dataset.contactId);
-            
-            try {
-                const response = await fetch('{% url "campaigns:add_contacts_to_group" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({
-                        group_id: groupId,
-                        contact_ids: contactIds
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showToast(data.message, 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    throw new Error(data.message);
-                }
-            } catch (error) {
-                showToast(error.message, 'error');
-            }
-            
-            groupDropdown.classList.add('hidden');
-        });
-    });
-
-    // Exposer la fonction openImportModal globalement
-    window.openImportModal = openImportModal;
-    window.closeImportModal = closeImportModal;
+    // Exposer les fonctions globalement
+    window.openContactsModal = openContactsModal;
+    window.closeContactsModal = closeContactsModal;
     window.hideToast = hideToast;
 });
 </script>

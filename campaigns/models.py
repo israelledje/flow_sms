@@ -6,6 +6,8 @@ from phonenumbers import parse, is_valid_number
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 import re
+from django.core.validators import RegexValidator
+from django.utils.translation import gettext_lazy as _
 
 class SenderId(models.Model):
     STATUS_CHOICES = [
@@ -73,87 +75,78 @@ class ContactGroup(models.Model):
         unique_together = ['name', 'user']
 
 class Contact(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='contacts')
-    phone_number = models.CharField(max_length=20)
-    first_name = models.CharField(max_length=100, blank=True, null=True)
-    last_name = models.CharField(max_length=100, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    groups = models.ManyToManyField('ContactGroup', blank=True, related_name='contacts')
-    is_active = models.BooleanField(default=True)
-    notes = models.TextField(blank=True, null=True)
+    phone_regex = RegexValidator(
+        regex=r'^\+?1?\d{9,15}$',
+        message="Le numéro de téléphone doit être au format: '+999999999'. Jusqu'à 15 chiffres autorisés."
+    )
+
+    phone_number = models.CharField(validators=[phone_regex], max_length=17)
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(blank=True)
+    groups = models.ManyToManyField(ContactGroup, related_name='contacts', blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['user', 'phone_number']
+        unique_together = ['phone_number', 'user']
         ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.phone_number})"
 
-    @property
-    def group_names(self):
-        return ", ".join([group.name for group in self.groups.all()])
-
     def clean(self):
-        try:
-            # Vérification du format camerounais
-            if not self.phone_number or not re.match(r'^237\d{8}$', self.phone_number):
-                raise ValidationError({
-                    'phone_number': 'Le numéro de téléphone doit être au format camerounais (237 suivi de 8 ou 9 chiffres)'
-                })
-        except Exception as e:
-            raise ValidationError({
-                'phone_number': str(e)
-            })
+        if not self.first_name and not self.last_name:
+            raise ValidationError(_("Le prénom ou le nom doit être fourni."))
 
 class Campaign(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Brouillon'),
-        ('scheduled', 'Programmé'),
-        ('sending', 'En cours d\'envoi'),
-        ('sent', 'Envoyé'),
-        ('failed', 'Échoué'),
+        ('scheduled', 'Programmée'),
+        ('active', 'Active'),
+        ('completed', 'Terminée'),
+        ('cancelled', 'Annulée'),
     ]
 
     name = models.CharField(max_length=200)
-    message_content = models.TextField()
+    description = models.TextField(blank=True)
+    message = models.TextField()
+    sender_id = models.ForeignKey(SenderId, on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    sender = models.ForeignKey(SenderId, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
-    scheduled_date = models.DateTimeField(null=True, blank=True)
-    contacts = models.ManyToManyField(Contact, through='Message')
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_rich_sms = models.BooleanField(default=False)
-    rich_content = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.name
 
-    def send(self):
-        if not self.sender or self.sender.status != 'approved':
-            raise ValueError("Un Sender ID approuvé est requis pour envoyer la campagne")
+    def clean(self):
+        if self.start_date and self.end_date and self.start_date >= self.end_date:
+            raise ValidationError(_("La date de fin doit être postérieure à la date de début."))
 
-        # Préparer la liste des numéros
-        phone_numbers = [contact.phone_number for contact in self.contacts.all()]
+    def save(self, *args, **kwargs):
+        if self.status == 'active' and not self.start_date:
+            self.start_date = timezone.now()
+        super().save(*args, **kwargs)
 
-        # Initialisation du service SMS
+    def send_sms(self, contacts):
         sms_service = SMSAPIService()
+        phone_numbers = [contact.phone_number for contact in contacts]
         
-        # Envoi du SMS
         response = sms_service.send_bulk_sms(
-            sender_id=self.sender.name,
-            message=self.message_content,
+            sender_id=self.sender_id.name,
+            message=self.message,
             mobiles=phone_numbers,
-            schedule_time=self.scheduled_date
+            schedule_time=self.start_date if self.status == 'scheduled' else None
         )
         
-        # Traitement de la réponse
-        processed_response = sms_service.process_api_response(response)
-        
-        self.status = 'sent' if processed_response['success'] else 'failed'
-        self.save()        
+        return sms_service.process_api_response(response, self)
 
 class Message(models.Model):
     STATUS_CHOICES = [
@@ -163,54 +156,20 @@ class Message(models.Model):
         ('failed', 'Échoué'),
     ]
 
-    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
-    content = models.TextField()
-    sender = models.ForeignKey(SenderId, on_delete=models.SET_NULL, null=True)
+    message_id = models.CharField(max_length=100, unique=True)
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='messages')
+    phone_number = models.CharField(max_length=20)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    sent_at = models.DateTimeField(null=True, blank=True)
-    delivered_at = models.DateTimeField(null=True, blank=True)
-    is_rich_sms = models.BooleanField(default=False)
-    rich_content = models.JSONField(null=True, blank=True)
-    message_id = models.CharField(max_length=100, null=True, blank=True)
-    error_description = models.TextField(null=True, blank=True)
+    error_code = models.CharField(max_length=50, blank=True)
+    error_description = models.TextField(blank=True)
+    credits_used = models.IntegerField(default=0)
+    sent_at = models.DateTimeField(auto_now_add=True)
 
-    def send(self):
-        try:
-            # Vérification du Sender ID
-            if not self.sender or self.sender.status != 'approved':
-                raise ValueError("Un Sender ID approuvé est requis pour envoyer le message")
-            
-            # Initialisation du service SMS
-            sms_service = SMSAPIService()
-            
-            # Envoi du SMS
-            response = sms_service.send_bulk_sms(
-                sender_id=self.sender.name,
-                message=self.content,
-                mobiles=[self.contact.phone_number],
-                schedule_time=self.campaign.scheduled_date if self.campaign.status == 'scheduled' else None
-            )
-            
-            # Traitement de la réponse
-            processed_response = sms_service.process_api_response(response)
-            
-            if processed_response['success']:
-                self.status = 'sent'
-                self.sent_at = timezone.now()
-                if processed_response['message_ids']:
-                    self.message_id = processed_response['message_ids'][0]
-            else:
-                self.status = 'failed'
-                self.error_description = processed_response['message']
-            
-            self.save()
-            
-        except Exception as e:
-            self.status = 'failed'
-            self.error_description = str(e)
-            self.save()
-            raise e
+    class Meta:
+        ordering = ['-sent_at']
+
+    def __str__(self):
+        return f"Message {self.message_id} - {self.phone_number}"
 
 class SMSTemplate(models.Model):
     name = models.CharField(max_length=200)
@@ -225,3 +184,12 @@ class SMSTemplate(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+"""
+
+
+
+
+
+"""

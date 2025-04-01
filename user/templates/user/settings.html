@@ -4,80 +4,153 @@
 {% block page_title %}Paramètres{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Cartes de paramètres -->
+<div class="max-w-7xl mx-auto">
+    <!-- En-tête avec statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Sender IDs actifs -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-blue-100">Sender IDs actifs</h2>
+                    <p class="text-4xl font-bold mt-2">{{ user.sender_ids.count }}</p>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-xl p-4">
+                    <i class="fa-solid fa-signature text-3xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dernière connexion -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-600">Dernière connexion</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ user.last_login|date:"d/m/Y" }}</p>
+                </div>
+                <div class="bg-blue-50 rounded-xl p-4">
+                    <i class="fa-solid fa-clock-rotate-left text-blue-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statut du compte -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-600">Statut du compte</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ user.get_verification_status_display }}</p>
+                </div>
+                <div class="bg-{{ user.verification_status|lower }}-50 rounded-xl p-4">
+                    <i class="fa-solid fa-shield-check text-{{ user.verification_status|lower }}-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sections de paramètres -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Sender IDs -->
-        <a href="{% url 'user:sender_id_list' %}" class="block">
-            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+        <div class="group">
+            <a href="{% url 'user:sender_id_list' %}" class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-1">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white transform group-hover:scale-110 transition-all duration-300">
                         <i class="fa-solid fa-signature text-xl"></i>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                    <span class="text-gray-400 group-hover:text-blue-500 transition-colors duration-300">
+                        <i class="fa-solid fa-arrow-right text-lg"></i>
+                    </span>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Sender IDs</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">Sender IDs</h3>
                 <p class="text-gray-500">Gérez vos identifiants d'expéditeur pour vos campagnes SMS.</p>
-            </div>
-        </a>
+            </a>
+        </div>
 
         <!-- Profil -->
-        <a href="{% url 'user:profile' %}" class="block">
-            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+        <div class="group">
+            <a href="{% url 'user:profile' %}" class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-1">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white transform group-hover:scale-110 transition-all duration-300">
                         <i class="fa-solid fa-user text-xl"></i>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                    <span class="text-gray-400 group-hover:text-blue-500 transition-colors duration-300">
+                        <i class="fa-solid fa-arrow-right text-lg"></i>
+                    </span>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Profil</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">Profil</h3>
                 <p class="text-gray-500">Modifiez vos informations personnelles et professionnelles.</p>
-            </div>
-        </a>
+            </a>
+        </div>
 
         <!-- Sécurité -->
-        <a href="{% url 'user:password_change' %}" class="block">
-            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+        <div class="group">
+            <a href="{% url 'user:password_change' %}" class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-1">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white transform group-hover:scale-110 transition-all duration-300">
                         <i class="fa-solid fa-lock text-xl"></i>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                    <span class="text-gray-400 group-hover:text-blue-500 transition-colors duration-300">
+                        <i class="fa-solid fa-arrow-right text-lg"></i>
+                    </span>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Sécurité</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">Sécurité</h3>
                 <p class="text-gray-500">Modifiez votre mot de passe et gérez la sécurité de votre compte.</p>
-            </div>
-        </a>
+            </a>
+        </div>
 
         {% if user.is_staff %}
         <!-- Administration des Sender IDs -->
-        <a href="{% url 'user:sender_id_admin_list' %}" class="block">
-            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-royal-blue transition-all duration-200 group">
+        <div class="group">
+            <a href="{% url 'user:sender_id_admin_list' %}" class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-1">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-royal-blue group-hover:bg-royal-blue group-hover:text-white transition-all duration-200">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white transform group-hover:scale-110 transition-all duration-300">
                         <i class="fa-solid fa-shield-halved text-xl"></i>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-royal-blue transition-colors duration-200"></i>
+                    <span class="text-gray-400 group-hover:text-blue-500 transition-colors duration-300">
+                        <i class="fa-solid fa-arrow-right text-lg"></i>
+                    </span>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Administration des Sender IDs</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">Administration des Sender IDs</h3>
                 <p class="text-gray-500">Gérez et approuvez les demandes de Sender IDs des utilisateurs.</p>
-            </div>
-        </a>
+            </a>
+        </div>
         {% endif %}
 
         <!-- Désactivation du compte -->
-        <a href="{% url 'user:account_deactivate' %}" class="block">
-            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:border-red-500 transition-all duration-200 group">
+        <div class="group col-span-full md:col-span-1">
+            <a href="{% url 'user:account_deactivate' %}" class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-red-200 transition-all duration-300 transform hover:-translate-y-1">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 group-hover:bg-red-600 group-hover:text-white transition-all duration-200">
+                    <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center text-white transform group-hover:scale-110 transition-all duration-300">
                         <i class="fa-solid fa-user-slash text-xl"></i>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-red-500 transition-colors duration-200"></i>
+                    <span class="text-gray-400 group-hover:text-red-500 transition-colors duration-300">
+                        <i class="fa-solid fa-arrow-right text-lg"></i>
+                    </span>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Désactiver le compte</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2 group-hover:text-red-600 transition-colors duration-300">Désactiver le compte</h3>
                 <p class="text-gray-500">Désactivez votre compte et supprimez vos données.</p>
-            </div>
-        </a>
+            </a>
+        </div>
     </div>
 </div>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.group:hover .animate-pulse {
+    animation: pulse 2s infinite;
+}
+</style>
 {% endblock %}

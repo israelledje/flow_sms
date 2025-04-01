@@ -3,139 +3,325 @@
 
 {% block title %}Mon Profil - FLOW SMS{% endblock %}
 
-{% block page_title %}Mon Profil{% endblock %}
-
 {% block content %}
-<div class="space-y-6">
-    <div class="bg-white shadow-sm rounded-xl">
-        <div class="p-6">
-            <div class="flex items-center space-x-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% if messages %}
+    <div class="mb-6">
+        {% for message in messages %}
+        <div class="rounded-lg p-4 mb-4 {% if message.tags == 'success' %}bg-green-50 border-l-4 border-green-400{% elif message.tags == 'error' %}bg-red-50 border-l-4 border-red-400{% endif %}">
+            <div class="flex">
                 <div class="flex-shrink-0">
-                    <div class="bg-royal-blue text-white rounded-full w-20 h-20 flex items-center justify-center text-2xl font-bold">
-                        {{ user.username|make_list|first|upper }}
+                    {% if message.tags == 'success' %}
+                        <i class="fas fa-check-circle text-green-400"></i>
+                    {% elif message.tags == 'error' %}
+                        <i class="fas fa-exclamation-circle text-red-400"></i>
+                    {% endif %}
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium {% if message.tags == 'success' %}text-green-800{% elif message.tags == 'error' %}text-red-800{% endif %}">
+                        {{ message }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- En-tête du profil -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+        <div class="relative h-32 bg-gradient-to-r from-blue-600 to-blue-800">
+            <div class="absolute -bottom-12 left-8">
+                {% if user.logo %}
+                    <img src="{{ user.logo.url }}" alt="Logo" class="w-24 h-24 rounded-2xl border-4 border-white shadow-md bg-white">
+                {% else %}
+                    <div class="w-24 h-24 rounded-2xl border-4 border-white shadow-md bg-white flex items-center justify-center">
+                        <span class="text-3xl font-bold text-blue-600">{{ user.username|make_list|first|upper }}</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="px-8 pb-6 pt-16">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        {% if user.account_type == 'ENTREPRISE' %}
+                            {{ user.nom }}
+                        {% else %}
+                            {{ user.prenom }} {{ user.nom }}
+                        {% endif %}
+                    </h1>
+                    <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                        <span class="flex items-center">
+                            <i class="fas fa-envelope mr-2"></i>
+                            {{ user.email }}
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-phone mr-2"></i>
+                            {{ user.telephone }}
+                        </span>
                     </div>
                 </div>
-                <div>
-                    <h3 class="text-xl font-bold text-gray-900">{{ user.username }}</h3>
-                    <p class="text-gray-500">{{ user.email }}</p>
+                <div class="flex items-center space-x-3">
+                    <div class="px-4 py-2 bg-{{ user.verification_status|lower }}-100 rounded-lg">
+                        <span class="text-sm font-medium text-{{ user.verification_status|lower }}-700">
+                            {{ user.get_verification_status_display }}
+                        </span>
+                    </div>
+                    <div class="px-4 py-2 bg-blue-100 rounded-lg">
+                        <span class="text-sm font-medium text-blue-700">
+                            {{ user.get_user_type_display }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Formulaire de modification -->
-    <div class="bg-white shadow-sm rounded-xl">
-        <div class="p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-6">Modifier mes informations</h3>
-            <form method="POST" class="space-y-6">
-                {% csrf_token %}
-                
-                {% if form.errors %}
-                <div class="rounded-md bg-red-50 p-4 mb-6">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-red-800">
-                                Des erreurs sont survenues
-                            </h3>
-                            <div class="mt-2 text-sm text-red-700">
-                                <ul class="list-disc pl-5 space-y-1">
-                                    {% for field in form %}
-                                        {% for error in field.errors %}
-                                            <li>{{ error }}</li>
-                                        {% endfor %}
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <div class="grid grid-cols-1 gap-6">
-                    <div>
-                        <label for="username" class="block text-sm font-medium text-gray-700">Nom d'utilisateur</label>
-                        <input type="text" name="username" id="username" value="{{ user.username }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-royal-blue focus:border-royal-blue sm:text-sm">
-                    </div>
-
-                    <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" name="email" id="email" value="{{ user.email }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-royal-blue focus:border-royal-blue sm:text-sm">
-                    </div>
-
-                    <div>
-                        <label for="current_password" class="block text-sm font-medium text-gray-700">Mot de passe actuel</label>
-                        <input type="password" name="current_password" id="current_password" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-royal-blue focus:border-royal-blue sm:text-sm">
-                    </div>
-
-                    <div>
-                        <label for="new_password1" class="block text-sm font-medium text-gray-700">Nouveau mot de passe</label>
-                        <input type="password" name="new_password1" id="new_password1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-royal-blue focus:border-royal-blue sm:text-sm">
-                        <p class="mt-1 text-sm text-gray-500">Laissez vide si vous ne souhaitez pas changer de mot de passe</p>
-                    </div>
-
-                    <div>
-                        <label for="new_password2" class="block text-sm font-medium text-gray-700">Confirmer le nouveau mot de passe</label>
-                        <input type="password" name="new_password2" id="new_password2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-royal-blue focus:border-royal-blue sm:text-sm">
-                    </div>
-                </div>
-
-                <div class="flex justify-end">
-                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-royal-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-royal-blue">
-                        Enregistrer les modifications
+    <!-- Contenu principal -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Colonne de gauche -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Informations personnelles -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">Informations {% if user.account_type == 'ENTREPRISE' %}de l'entreprise{% else %}personnelles{% endif %}</h2>
+                    <button type="button" class="text-blue-600 hover:text-blue-700 text-sm font-medium" onclick="toggleEdit('personal-info')">
+                        <i class="fas fa-edit mr-1"></i> Modifier
                     </button>
                 </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Statistiques -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white shadow-sm rounded-xl p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500">Messages envoyés</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-2">{{ stats.messages_sent|default:"0" }}</p>
+                <div class="p-6">
+                    <form method="POST" id="personal-info-form" class="space-y-6" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="personal_info">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {% if user.account_type == 'ENTREPRISE' %}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nom de l'entreprise</label>
+                                <input type="text" name="nom" value="{{ user.nom }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Secteur d'activité</label>
+                                <input type="text" name="secteur_activite" value="{{ user.secteur_activite }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">NIU</label>
+                                <input type="text" name="niu" value="{{ user.niu }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">RCCM</label>
+                                <input type="text" name="rccm" value="{{ user.rccm }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Site web</label>
+                                <input type="url" name="site_web" value="{{ user.site_web }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nombre d'employés</label>
+                                <input type="number" name="nombre_employes" value="{{ user.nombre_employes }}" class="form-input" disabled>
+                            </div>
+                            {% else %}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                                <input type="text" name="nom" value="{{ user.nom }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                                <input type="text" name="prenom" value="{{ user.prenom }}" class="form-input" disabled>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+                                <input type="tel" name="telephone" value="{{ user.telephone }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <input type="email" name="email" value="{{ user.email }}" class="form-input" disabled>
+                            </div>
+                        </div>
+                        <div class="hidden pt-4 border-t border-gray-100" id="personal-info-actions">
+                            <div class="flex justify-end space-x-3">
+                                <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50" onclick="cancelEdit('personal-info')">
+                                    Annuler
+                                </button>
+                                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                    Enregistrer
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="bg-blue-50 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"/>
-                    </svg>
+            </div>
+
+            <!-- Adresse -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">Adresse</h2>
+                    <button type="button" class="text-blue-600 hover:text-blue-700 text-sm font-medium" onclick="toggleEdit('address')">
+                        <i class="fas fa-edit mr-1"></i> Modifier
+                    </button>
+                </div>
+                <div class="p-6">
+                    <form method="POST" id="address-form" class="space-y-6">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="address">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Adresse physique</label>
+                                <textarea name="adresse" rows="3" class="form-input" disabled>{{ user.adresse }}</textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Ville</label>
+                                <input type="text" name="ville" value="{{ user.ville }}" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Pays</label>
+                                <input type="text" name="pays" value="{{ user.pays }}" class="form-input" disabled>
+                            </div>
+                        </div>
+                        <div class="hidden pt-4 border-t border-gray-100" id="address-actions">
+                            <div class="flex justify-end space-x-3">
+                                <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50" onclick="cancelEdit('address')">
+                                    Annuler
+                                </button>
+                                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                    Enregistrer
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white shadow-sm rounded-xl p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500">Campagnes créées</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-2">{{ stats.campaigns_created|default:"0" }}</p>
+        <!-- Colonne de droite -->
+        <div class="space-y-6">
+            <!-- Préférences -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold text-gray-900">Préférences</h2>
                 </div>
-                <div class="bg-orange-50 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
-                    </svg>
+                <div class="p-6">
+                    <form method="POST" id="preferences-form" class="space-y-6">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="preferences">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Langue</label>
+                                <select name="langue" class="form-select">
+                                    {% for code, name in user.LANGUAGE_CHOICES %}
+                                    <option value="{{ code }}" {% if user.langue == code %}selected{% endif %}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Fuseau horaire</label>
+                                <select name="fuseau_horaire" class="form-select">
+                                    {% for tz in user.TIMEZONE_CHOICES %}
+                                    <option value="{{ tz.0 }}" {% if user.fuseau_horaire == tz.0 %}selected{% endif %}>{{ tz.1 }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between py-3">
+                                <span class="text-sm font-medium text-gray-700">Notifications SMS</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="notifications_sms" class="sr-only peer" {% if user.notifications_sms %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between py-3">
+                                <span class="text-sm font-medium text-gray-700">Notifications email</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="notifications_email" class="sr-only peer" {% if user.notifications_email %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-gray-100">
+                            <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                Enregistrer les préférences
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        </div>
 
-        <div class="bg-white shadow-sm rounded-xl p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500">Contacts ajoutés</p>
-                    <p class="text-2xl font-bold text-gray-900 mt-2">{{ stats.contacts_added|default:"0" }}</p>
+            <!-- Sécurité -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold text-gray-900">Sécurité</h2>
                 </div>
-                <div class="bg-green-50 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
+                <div class="p-6">
+                    <form method="POST" id="security-form" class="space-y-6">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="security">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+                                <input type="password" name="current_password" class="form-input">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+                                <input type="password" name="new_password1" class="form-input">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                                <input type="password" name="new_password2" class="form-input">
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-gray-100">
+                            <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                Changer le mot de passe
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.form-input {
+    @apply mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-colors;
+}
+.form-select {
+    @apply mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-colors;
+}
+</style>
+
+<script>
+function toggleEdit(section) {
+    const form = document.getElementById(`${section}-form`);
+    const actions = document.getElementById(`${section}-actions`);
+    const inputs = form.querySelectorAll('input, textarea');
+    
+    inputs.forEach(input => {
+        input.disabled = false;
+    });
+    
+    actions.classList.remove('hidden');
+}
+
+function cancelEdit(section) {
+    const form = document.getElementById(`${section}-form`);
+    const actions = document.getElementById(`${section}-actions`);
+    const inputs = form.querySelectorAll('input, textarea');
+    
+    inputs.forEach(input => {
+        input.disabled = true;
+        input.value = input.defaultValue;
+    });
+    
+    actions.classList.add('hidden');
+}
+
+// Gestion des toggles de notifications
+document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const form = this.closest('form');
+        form.submit();
+    });
+});
+</script>
 {% endblock %}

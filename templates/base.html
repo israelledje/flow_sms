@@ -30,6 +30,8 @@
                     animation: {
                         'fade-in': 'fadeIn 0.2s ease-in-out',
                         'pulse-subtle': 'pulseSidebar 2s ease-in-out infinite',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'slide-out': 'slideOut 0.3s ease-in',
                     },
                     keyframes: {
                         fadeIn: {
@@ -40,6 +42,14 @@
                             '0%': { boxShadow: '0 0 0 0 rgba(37, 99, 235, 0.2)' },
                             '70%': { boxShadow: '0 0 0 6px rgba(37, 99, 235, 0)' },
                             '100%': { boxShadow: '0 0 0 0 rgba(37, 99, 235, 0)' }
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateX(100%)' },
+                            '100%': { transform: 'translateX(0)' }
+                        },
+                        slideOut: {
+                            '0%': { transform: 'translateX(0)' },
+                            '100%': { transform: 'translateX(100%)' }
                         }
                     }
                 }
@@ -51,225 +61,410 @@
         
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
         }
         
-        .dropdown-menu {
-            animation: fadeIn 0.2s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .nav-link {
+        /* Styles de la nouvelle sidebar */
+        .sidebar {
+            background-color: #1e293b;
+            width: 280px;
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .nav-link:hover {
-            transform: translateX(5px);
-        }
-        
-        .nav-link::before {
-            content: '';
-            position: absolute;
+            border-radius: 16px;
+            margin: 16px;
+            height: calc(100vh - 32px);
+            position: fixed;
             left: 0;
-            bottom: 0;
-            height: 3px;
-            width: 0;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 10px;
-            transition: width 0.3s ease;
-        }
-        
-        .nav-link:hover::before {
-            width: 20%;
-        }
-        
-        .nav-link.active-link::before {
-            width: 25%;
-            background: rgba(255, 255, 255, 0.9);
+            top: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            z-index: 40;
         }
 
-        /* Amélioration pour les icônes */
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            margin: 4px 0;
+            border-radius: 12px;
+            color: #94a3b8;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-item.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
         .nav-icon {
             width: 24px;
-            display: inline-flex;
-            justify-content: center;
+            height: 24px;
+            display: flex;
             align-items: center;
-            transition: transform 0.3s ease;
-        }
-        
-        .nav-link:hover .nav-icon {
-            transform: scale(1.1);
+            justify-content: center;
+            margin-right: 12px;
         }
 
-        /* Pour assurer que la sidebar est visible sur desktop */
-        @media (min-width: 640px) {
-            #logo-sidebar {
-                transform: translateX(0) !important;
+        .nav-text {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        .sidebar.collapsed .nav-text {
+            opacity: 0;
+            width: 0;
+            margin: 0;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            padding: 0 12px 24px 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo-section img {
+            height: 32px;
+            width: auto;
+        }
+
+        .logo-text {
+            margin-left: 12px;
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+            transition: opacity 0.2s ease;
+        }
+
+        .sidebar.collapsed .logo-text {
+            opacity: 0;
+            width: 0;
+            margin: 0;
+        }
+
+        /* Contenu principal */
+        .main-content {
+            margin-left: 312px;
+            width: calc(100% - 312px);
+            min-height: 100vh;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 112px;
+            width: calc(100% - 112px);
+        }
+
+        /* Styles des toasts */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast.success {
+            border-left: 4px solid #10B981;
+        }
+
+        .toast.error {
+            border-left: 4px solid #EF4444;
+        }
+
+        .toast.warning {
+            border-left: 4px solid #F59E0B;
+        }
+
+        .toast.info {
+            border-left: 4px solid #3B82F6;
+        }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .toast.success .toast-icon {
+            background-color: #D1FAE5;
+            color: #10B981;
+        }
+
+        .toast.error .toast-icon {
+            background-color: #FEE2E2;
+            color: #EF4444;
+        }
+
+        .toast.warning .toast-icon {
+            background-color: #FEF3C7;
+            color: #F59E0B;
+        }
+
+        .toast.info .toast-icon {
+            background-color: #DBEAFE;
+            color: #3B82F6;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .toast-message {
+            font-size: 14px;
+            color: #6B7280;
+        }
+
+        .toast-close {
+            color: #9CA3AF;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .toast-close:hover {
+            color: #4B5563;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                margin: 0;
+                border-radius: 0;
+                height: 100vh;
             }
 
-            .content-with-sidebar {
-                margin-left: 16rem;
+            .sidebar.show {
+                transform: translateX(0);
             }
-        }
-        
-        /* Effet de glassmorphism pour la sidebar */
-        .glassmorphism {
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .main-content.expanded {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .toast {
+                min-width: auto;
+                max-width: calc(100% - 40px);
+            }
         }
     </style>
 </head>
-<body class="bg-gray-50 bg-gradient-to-br from-violet-100 to-pink-100" >
-    <div class="min-h-screen flex">
+<body>
+    <div class="flex min-h-screen">
         {% if user.is_authenticated %}
-        <!-- Sidebar fixe -->
-        <aside id="logo-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0 shadow-xl overflow-hidden" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
-            <!-- Logo -->
-            <div class="p-6 flex items-center justify-center space-x-3 border-b border-white border-opacity-20">
-                <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-9 inline"> 
-                <span class="text-xl font-bold tracking-tight text-white">FLOW SMS</span>
+        <!-- Nouvelle Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-section">
+                <img src="{% static 'img/logo.png' %}" alt="Logo" class="logo-img">
+                <span class="logo-text">FLOW SMS</span>
             </div>
 
-            <!-- Navigation -->
-            <div class="h-full px-3 py-4 overflow-y-auto">
-                <nav class="flex-1 flex flex-col items-start space-y-3 mt-2">
-                    <a href="{% url 'user:dashboard' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'dashboard' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
-                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'dashboard' %}bg-white bg-opacity-15{% endif %}">
-                            <i class="fa-solid fa-gauge-high"></i>
-                        </div>
-                        <span class="text-base font-medium">Tableau de bord</span>
-                    </a>
+            <nav class="flex-1 space-y-2">
+                <a href="{% url 'user:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-th-large"></i>
+                    </div>
+                    <span class="nav-text">Tableau de bord</span>
+                </a>
 
-                    <a href="{% url 'campaigns:campaign_list' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.app_name == 'campaigns' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
-                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.app_name == 'campaigns' %}bg-white bg-opacity-15{% endif %}">
-                            <i class="fa-solid fa-bullhorn"></i>
-                        </div>
-                        <span class="text-base font-medium">Campagnes</span>
-                    </a>
+                <a href="{% url 'campaigns:campaign_list' %}" class="nav-item {% if request.resolver_match.app_name == 'campaigns' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <span class="nav-text">Campagnes</span>
+                </a>
 
-                    <a href="{% url 'campaigns:sms_template_list' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'sms_template_list' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
-                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'sms_template_list' %}bg-white bg-opacity-15{% endif %}">
-                            <i class="fa-solid fa-file-lines"></i>
-                        </div>
-                        <span class="text-base font-medium">Modèles SMS</span>
-                    </a>
+                <a href="{% url 'campaigns:sms_template_list' %}" class="nav-item {% if request.resolver_match.url_name == 'sms_template_list' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-file-lines"></i>
+                    </div>
+                    <span class="nav-text">Modèles SMS</span>
+                </a>
 
-                    <a href="{% url 'campaigns:contact_list' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'contact_list' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
-                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'contact_list' %}bg-white bg-opacity-15{% endif %}">
-                            <i class="fa-solid fa-address-book"></i>
-                        </div>
-                        <span class="text-base font-medium">Contacts</span>
-                    </a>
+                <a href="{% url 'campaigns:contact_list' %}" class="nav-item {% if request.resolver_match.url_name == 'contact_list' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-address-book"></i>
+                    </div>
+                    <span class="nav-text">Contacts</span>
+                </a>
 
-                    <a href="{% url 'user:settings' %}" class="nav-link w-full py-3 px-4 rounded-xl text-white hover:bg-white hover:bg-opacity-10 transition-all duration-300 flex items-center space-x-3 {% if request.resolver_match.url_name == 'settings' %}active-link bg-white bg-opacity-15 shadow-lg{% else %}bg-transparent{% endif %}">
-                        <div class="nav-icon h-8 w-8 rounded-lg flex items-center justify-center {% if request.resolver_match.url_name == 'settings' %}bg-white bg-opacity-15{% endif %}">
-                            <i class="fa-solid fa-gear"></i>
-                        </div>
-                        <span class="text-base font-medium">Paramètres</span>
-                    </a>
-                </nav>
+                <a href="{% url 'user:credit_purchase' %}" class="nav-item {% if request.resolver_match.url_name == 'credit_purchase' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <span class="nav-text">Acheter des crédits</span>
+                </a>
 
-                <!-- Logout Button -->
-                <div class="p-5 border-t border-white border-opacity-20 mt-auto">
-                    <form method="post" action="{% url 'user:logout' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="w-full relative overflow-hidden group bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center space-x-3 transition-all duration-300 shadow-md hover:shadow-lg">
-                            <span class="absolute inset-0 w-full h-full bg-white/10 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500 rounded-xl"></span>
-                            <i class="fa-solid fa-right-from-bracket relative z-10"></i>
-                            <span class="font-medium relative z-10">Déconnexion</span>
-                        </button>
-                    </form>
-                </div>
+                <a href="{% url 'user:settings' %}" class="nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-gear"></i>
+                    </div>
+                    <span class="nav-text">Configuration</span>
+                </a>
+
+                {% if user.is_staff %}
+                <a href="{% url 'user:sender_id_admin_list' %}" class="nav-item {% if request.resolver_match.url_name == 'sender_id_admin_list' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <span class="nav-text">Sender IDs</span>
+                </a>
+
+                <a href="/user/admin/promo-codes/" class="nav-item {% if request.path == '/user/admin/promo-codes/' %}active{% endif %}">
+                    <div class="nav-icon">
+                        <i class="fas fa-ticket"></i>
+                    </div>
+                    <span class="nav-text">Codes promo</span>
+                </a>
+                {% endif %}
+            </nav>
+
+            <div class="mt-auto">
+                <form method="post" action="{% url 'user:logout' %}" class="nav-item hover:bg-red-500">
+                    {% csrf_token %}
+                    <div class="nav-icon">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </div>
+                    <button type="submit" class="nav-text">Déconnexion</button>
+                </form>
             </div>
         </aside>
         {% endif %}
 
-        <div class="flex-1 {% if user.is_authenticated %}content-with-sidebar{% endif %}">
-            {% if user.is_authenticated %}
-            <!-- Top Bar -->
-            <header class="bg-white shadow-sm sticky top-0 z-10">
-                <div class="max-w-7xl mx-auto px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <!-- Page Title with icon -->
-                        <div class="flex items-center space-x-3">
-                            <!-- Bouton pour ouvrir la sidebar sur mobile -->
-                            <button type="button" class="sm:hidden inline-flex items-center p-2 text-sm text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200" id="toggleSidebarBtn">
-                                <span class="sr-only">Ouvrir menu</span>
-                                <svg class="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                    <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
-                                </svg>
-                            </button>
-                            <h1 class="text-2xl font-bold text-gray-800">
-                                {% block page_title %}{% endblock %}
-                            </h1>
-                        </div>
-
-                        <!-- User Menu -->
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" class="flex items-center space-x-4 focus:outline-none bg-gray-50 hover:bg-gray-100 transition-colors duration-200 rounded-xl px-4 py-2">
-                                <div class="h-10 w-10 rounded-full bg-royal-blue bg-opacity-10 flex items-center justify-center border-2 border-royal-blue border-opacity-20">
-                                    {% if user.profile_image %}
-                                        <img src="{{ user.profile_image.url }}" alt="Profile" class="h-9 w-9 rounded-full object-cover">
-                                    {% else %}
-                                        <i class="fa-solid fa-user"></i>
-                                    {% endif %}
-                                </div>
-                                <span class="text-gray-700 font-medium">{{ user.get_full_name|default:user.username }}</span>
-                                <i class="fa-solid fa-chevron-down text-gray-400 transition-transform duration-200" :class="{'transform rotate-180': open}"></i>
-                            </button>
-
-                            <!-- Dropdown Menu -->
-                            <div x-show="open" @click.away="open = false" x-transition class="dropdown-menu absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg py-2 border border-gray-100">
-                                <a href="{% url 'user:profile' %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                                    <i class="fa-solid fa-user text-royal-blue"></i>
-                                    <span>Mon profil</span>
-                                </a>
-                                <a href="{% url 'user:settings' %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                                    <i class="fa-solid fa-gear text-royal-blue"></i>
-                                    <span>Paramètres</span>
-                                </a>
-                                <hr class="my-2 border-gray-100">
-                                <form method="post" action="{% url 'user:logout' %}" class="block">
-                                    {% csrf_token %}
-                                    <button type="submit" class="w-full flex items-center space-x-3 text-left px-4 py-3 text-red-600 hover:bg-gray-50 transition-colors duration-200">
-                                        <i class="fa-solid fa-right-from-bracket text-red-600"></i>
-                                        <span>Déconnexion</span>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-            {% endif %}
-
-            <!-- Main Content -->
-            <main class="{% if user.is_authenticated %}p-6{% else %}p-0{% endif %}">
-                {% block content %}{% endblock %}
-            </main>
-        </div>
+        <!-- Contenu principal -->
+        <main class="main-content {% if user.is_authenticated %}with-sidebar{% endif %}" id="main-content">
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
-    <!-- Scripts -->
+    <!-- Container pour les toasts -->
+    <div id="toast-container" class="toast-container"></div>
+
     <script>
+        // Toggle sidebar
         document.addEventListener('DOMContentLoaded', function() {
-            const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
-            const logoSidebar = document.getElementById('logo-sidebar');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
             
-            // Pour le bouton toggle mobile
-            if (toggleSidebarBtn) {
-                toggleSidebarBtn.addEventListener('click', function() {
-                    logoSidebar.classList.toggle('-translate-x-full');
-                });
-            }
+            // Double-click sur la sidebar pour la réduire/agrandir
+            sidebar.addEventListener('dblclick', function(e) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            });
+
+            // Pour mobile
+            const toggleButton = document.createElement('button');
+            toggleButton.innerHTML = '<i class="fas fa-bars"></i>';
+            toggleButton.className = 'fixed top-4 left-4 z-50 p-2 bg-blue-600 text-white rounded-lg md:hidden';
+            document.body.appendChild(toggleButton);
+
+            toggleButton.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+            });
         });
+
+        // Système de toasts
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icon = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            }[type];
+
+            toast.innerHTML = `
+                <div class="toast-icon">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <div class="toast-close">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Fermer le toast
+            const closeBtn = toast.querySelector('.toast-close');
+            closeBtn.addEventListener('click', () => {
+                toast.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => toast.remove(), 300);
+            });
+
+            // Auto-fermeture après 5 secondes
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.style.animation = 'slideOut 0.3s ease-in';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Exposer la fonction showToast globalement
+        window.showToast = showToast;
+
+        // Gérer les messages Django
+        {% if messages %}
+            {% for message in messages %}
+                showToast(
+                    '{{ message.tags|title }}',
+                    '{{ message }}',
+                    '{{ message.tags }}'
+                );
+            {% endfor %}
+        {% endif %}
     </script>
-    
-    {% block extra_scripts %}{% endblock %}
+
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Acheter des crédits - FLOW SMS{% endblock %}
+
+{% block page_title %}Acheter des crédits{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- En-tête avec solde actuel et statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Solde actuel -->
+        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform duration-300">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-emerald-100">Solde actuel</h2>
+                    <p class="text-4xl font-bold mt-2">{{ user.credits|floatformat:0 }} SMS</p>
+                </div>
+                <div class="bg-white bg-opacity-20 rounded-xl p-4">
+                    <i class="fa-solid fa-circle-dollar-to-slot text-3xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques d'utilisation -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-600">SMS utilisés ce mois</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ user.sms_used_this_month|default:"0" }}</p>
+                </div>
+                <div class="bg-blue-50 rounded-xl p-4">
+                    <i class="fa-solid fa-chart-line text-blue-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Taux de livraison -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-600">Taux de livraison</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">98.5%</p>
+                </div>
+                <div class="bg-green-50 rounded-xl p-4">
+                    <i class="fa-solid fa-check-circle text-green-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section des packages -->
+    <div class="bg-white rounded-2xl shadow-sm p-8 border border-gray-100">
+        <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-gray-900">Choisissez votre package</h2>
+            <p class="text-gray-600 mt-2">Plus vous achetez, plus vous économisez !</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Package 5 000 SMS -->
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm p-6 border border-emerald-100 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-1">
+                <div class="text-center">
+                    <div class="bg-emerald-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-rocket text-emerald-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900">5 000 SMS</h3>
+                    <p class="text-3xl font-bold text-emerald-600 mt-2">60 000 FCFA</p>
+                    <p class="text-sm text-gray-500 mt-1">12 FCFA/SMS</p>
+                    <div class="mt-4 text-sm text-emerald-600">
+                        <i class="fa-solid fa-check mr-1"></i>
+                        Livraison instantanée
+                    </div>
+                </div>
+                <button onclick="selectPackage(5000, 60000)" class="mt-6 w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-shopping-cart mr-2"></i>
+                    Sélectionner
+                </button>
+            </div>
+
+            <!-- Package 10 000 SMS -->
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm p-6 border-2 border-emerald-200 hover:shadow-lg hover:border-emerald-300 transition-all duration-300 transform hover:-translate-y-1 relative">
+                <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <span class="bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                        Populaire
+                    </span>
+                </div>
+                <div class="text-center">
+                    <div class="bg-emerald-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-star text-emerald-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900">10 000 SMS</h3>
+                    <p class="text-3xl font-bold text-emerald-600 mt-2">100 000 FCFA</p>
+                    <p class="text-sm text-gray-500 mt-1">10 FCFA/SMS</p>
+                    <div class="mt-4 text-sm text-emerald-600">
+                        <i class="fa-solid fa-check mr-1"></i>
+                        Économisez 17%
+                    </div>
+                </div>
+                <button onclick="selectPackage(10000, 100000)" class="mt-6 w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-shopping-cart mr-2"></i>
+                    Sélectionner
+                </button>
+            </div>
+
+            <!-- Montant personnalisé -->
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm p-6 border border-emerald-100 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-1">
+                <div class="text-center">
+                    <div class="bg-emerald-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-sliders text-emerald-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900">Montant personnalisé</h3>
+                    <div class="mt-4">
+                        <input type="number" id="customAmount" min="5000" step="1000" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Nombre de SMS" oninput="updateCustomPrice()">
+                    </div>
+                    <div id="customPrice" class="mt-2">
+                        <p class="text-3xl font-bold text-emerald-600">0 FCFA</p>
+                        <p class="text-sm text-gray-500">Prix par SMS calculé automatiquement</p>
+                    </div>
+                </div>
+                <button onclick="selectCustomPackage()" class="mt-6 w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-shopping-cart mr-2"></i>
+                    Sélectionner
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de paiement -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Finaliser l'achat</h3>
+                <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-500 transition-colors">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Résumé de la commande -->
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Résumé de la commande</h4>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Nombre de SMS</span>
+                            <span class="font-medium" id="modalAmount">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Prix par SMS</span>
+                            <span class="font-medium" id="modalPricePerSMS">0 FCFA</span>
+                        </div>
+                        <div class="border-t border-gray-200 pt-3 mt-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-900 font-semibold">Prix total</span>
+                                <span class="text-2xl font-bold text-emerald-600" id="modalTotalPrice">0 FCFA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code promo -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Code promo (optionnel)</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="promoCode" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Entrez votre code promo">
+                        <button onclick="applyPromoCode()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">
+                            <i class="fa-solid fa-ticket mr-2"></i>
+                            Appliquer
+                        </button>
+                    </div>
+                    <div id="promoCodeResult" class="mt-2 text-sm"></div>
+                </div>
+
+                <!-- Méthodes de paiement -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement</label>
+                    <div class="space-y-3">
+                        <label class="flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input type="radio" name="paymentMethod" value="CREDIT_CARD" class="text-emerald-600 focus:ring-emerald-500">
+                            <span class="ml-3 flex items-center">
+                                <i class="fa-solid fa-credit-card text-gray-400 mr-2"></i>
+                                Carte de crédit
+                            </span>
+                        </label>
+                        <label class="flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input type="radio" name="paymentMethod" value="ORANGE_MONEY" class="text-emerald-600 focus:ring-emerald-500">
+                            <span class="ml-3 flex items-center">
+                                <i class="fa-solid fa-mobile-screen text-gray-400 mr-2"></i>
+                                Orange Money
+                            </span>
+                        </label>
+                        <label class="flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input type="radio" name="paymentMethod" value="MTN_MONEY" class="text-emerald-600 focus:ring-emerald-500">
+                            <span class="ml-3 flex items-center">
+                                <i class="fa-solid fa-mobile-screen text-gray-400 mr-2"></i>
+                                MTN Mobile Money
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <button onclick="processPayment()" class="w-full bg-emerald-600 text-white py-4 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-lock mr-2"></i>
+                    Payer maintenant
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let selectedAmount = 0;
+    let selectedPrice = 0;
+    let promoDiscount = 0;
+
+    function calculatePricePerSMS(amount) {
+        if (amount >= 500000) return 7.5;
+        if (amount >= 50000) return 8;
+        if (amount >= 25000) return 10;
+        return 12;
+    }
+
+    function calculateTotalPrice(amount) {
+        const pricePerSMS = calculatePricePerSMS(amount);
+        return amount * pricePerSMS;
+    }
+
+    function updateCustomPrice() {
+        const amount = parseInt(document.getElementById('customAmount').value) || 0;
+        if (amount >= 5000) {
+            const price = calculateTotalPrice(amount);
+            const pricePerSMS = calculatePricePerSMS(amount);
+            const savings = amount >= 10000 ? Math.round((12 - pricePerSMS) / 12 * 100) : 0;
+            
+            document.getElementById('customPrice').innerHTML = `
+                <p class="text-3xl font-bold text-emerald-600">${price.toLocaleString()} FCFA</p>
+                <p class="text-sm text-gray-500">${pricePerSMS} FCFA/SMS</p>
+                ${savings > 0 ? `<p class="text-sm text-emerald-600 mt-1"><i class="fa-solid fa-piggy-bank mr-1"></i>Économisez ${savings}%</p>` : ''}
+            `;
+        } else {
+            document.getElementById('customPrice').innerHTML = `
+                <p class="text-3xl font-bold text-emerald-600">0 FCFA</p>
+                <p class="text-sm text-gray-500">Minimum 5 000 SMS</p>
+            `;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCustomPrice();
+        document.getElementById('customAmount').addEventListener('input', updateCustomPrice);
+    });
+
+    function selectPackage(amount, price) {
+        selectedAmount = amount;
+        selectedPrice = price;
+        showPaymentModal();
+    }
+
+    function selectCustomPackage() {
+        const amount = parseInt(document.getElementById('customAmount').value) || 0;
+        if (amount >= 5000) {
+            selectedAmount = amount;
+            selectedPrice = calculateTotalPrice(amount);
+            showPaymentModal();
+        } else {
+            showToast('Erreur', 'Le montant minimum est de 5 000 SMS', 'error');
+        }
+    }
+
+    function showPaymentModal() {
+        document.getElementById('modalAmount').textContent = selectedAmount.toLocaleString();
+        const pricePerSMS = calculatePricePerSMS(selectedAmount);
+        document.getElementById('modalPricePerSMS').textContent = `${pricePerSMS} FCFA`;
+        document.getElementById('modalTotalPrice').textContent = `${selectedPrice.toLocaleString()} FCFA`;
+        document.getElementById('paymentModal').classList.remove('hidden');
+        document.getElementById('paymentModal').classList.add('flex');
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').classList.add('hidden');
+        document.getElementById('paymentModal').classList.remove('flex');
+        document.getElementById('promoCode').value = '';
+        document.getElementById('promoCodeResult').innerHTML = '';
+        promoDiscount = 0;
+    }
+
+    function applyPromoCode() {
+        const code = document.getElementById('promoCode').value;
+        if (!code) return;
+
+        fetch(`/user/credits/verify-promo-code/?code=${code}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    promoDiscount = data.discount;
+                    const discountedPrice = selectedPrice * (1 - promoDiscount / 100);
+                    document.getElementById('modalTotalPrice').textContent = `${discountedPrice.toLocaleString()} FCFA`;
+                    document.getElementById('promoCodeResult').innerHTML = `
+                        <p class="text-emerald-600">
+                            <i class="fa-solid fa-check-circle mr-1"></i>
+                            Réduction de ${promoDiscount}% appliquée
+                        </p>
+                    `;
+                } else {
+                    document.getElementById('promoCodeResult').innerHTML = `
+                        <p class="text-red-600">
+                            <i class="fa-solid fa-times-circle mr-1"></i>
+                            ${data.message}
+                        </p>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('promoCodeResult').innerHTML = `
+                    <p class="text-red-600">
+                        <i class="fa-solid fa-exclamation-circle mr-1"></i>
+                        Une erreur est survenue
+                    </p>
+                `;
+            });
+    }
+
+    function processPayment() {
+        const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+        if (!paymentMethod) {
+            showToast('Erreur', 'Veuillez sélectionner une méthode de paiement', 'error');
+            return;
+        }
+
+        // Simuler le traitement du paiement
+        showToast('Succès', 'Paiement en cours de traitement...', 'success');
+        setTimeout(() => {
+            window.location.href = '/user/dashboard/';
+        }, 2000);
+    }
+</script>
+{% endblock %} 

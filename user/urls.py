@@ -46,4 +46,14 @@ urlpatterns = [
     # Admin Sender ID URLs
     path('admin/sender-ids/', views.sender_id_admin_list, name='sender_id_admin_list'),
     path('admin/sender-ids/<int:pk>/review/', views.sender_id_admin_review, name='sender_id_admin_review'),
+
+    # Admin Promo Codes URLs
+    path('admin/promo-codes/', views.PromoCodeAdminView.as_view(), name='promo_code_admin'),
+    path('admin/promo-codes/<int:pk>/', views.PromoCodeDetailView.as_view(), name='promo_code_detail'),
+
+    # Credits URLs
+    path('credits/purchase/', views.CreditPurchaseView.as_view(), name='credit_purchase'),
+    path('credits/process-payment/', views.ProcessPaymentView.as_view(), name='process_payment'),
+    path('credits/history/', views.TransactionHistoryView.as_view(), name='transaction_history'),
+    path('credits/verify-promo-code/', views.VerifyPromoCodeView.as_view(), name='verify_promo_code'),
 ]

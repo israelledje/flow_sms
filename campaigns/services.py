@@ -1,8 +1,10 @@
 import requests
 import json
 from django.conf import settings
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any
+from django.db.models import Count, Sum, F
+from django.db.models.functions import TruncDate
 
 class SMSAPIService:
     API_URL = "https://smsvas.com/bulk/public/index.php/api/v1/sendsms"
@@ -63,16 +65,19 @@ class SMSAPIService:
                 "sms": []
             }
     
-    def process_api_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
+    def process_api_response(self, response: Dict[str, Any], campaign=None) -> Dict[str, Any]:
         """
-        Traite la réponse de l'API pour extraire les informations importantes.
+        Traite la réponse de l'API pour extraire les informations importantes et met à jour les statistiques.
         
         Args:
             response (Dict[str, Any]): Réponse de l'API
+            campaign: Campagne associée aux messages
             
         Returns:
             Dict[str, Any]: Informations traitées
         """
+        from .models import Message  # Import déplacé ici pour éviter l'importation circulaire
+        
         if response.get("responsecode") != 1:
             return {
                 "success": False,
@@ -82,11 +87,32 @@ class SMSAPIService:
                 "failure_count": 0,
                 "message_ids": [],
                 "errors": [],
-                "balance": 0
+                "credits_used": 0
             }
             
         sent_messages = response.get("sms", [])
         success_count = sum(1 for msg in sent_messages if msg.get("status") == "success")
+        
+        # Calcul du total des crédits utilisés
+        total_credits = sum(msg.get("total_sms_unit", 0) for msg in sent_messages)
+        
+        # Création des messages dans la base de données
+        messages_to_create = []
+        for msg in sent_messages:
+            message = Message(
+                message_id=msg.get("messageid"),
+                campaign=campaign,
+                phone_number=msg.get("mobileno"),
+                status=msg.get("status", "error"),
+                error_code=msg.get("errorcode"),
+                error_description=msg.get("errordescription"),
+                credits_used=msg.get("total_sms_unit", 0),
+                sent_at=datetime.now()
+            )
+            messages_to_create.append(message)
+        
+        # Création en masse des messages
+        Message.objects.bulk_create(messages_to_create)
         
         return {
             "success": True,
@@ -103,5 +129,90 @@ class SMSAPIService:
                 for msg in sent_messages
                 if msg.get("status") != "success"
             ],
-            "balance": sent_messages[0].get("balance", 0) if sent_messages else 0
+            "credits_used": total_credits
+        }
+
+    def get_delivery_stats(self, days: int = 30) -> Dict[str, Any]:
+        """
+        Récupère les statistiques de livraison sur une période donnée.
+        
+        Args:
+            days (int): Nombre de jours pour la période
+            
+        Returns:
+            Dict[str, Any]: Statistiques de livraison
+        """
+        from .models import Message  # Import déplacé ici pour éviter l'importation circulaire
+        
+        start_date = datetime.now() - timedelta(days=days)
+        
+        # Statistiques globales
+        total_messages = Message.objects.filter(sent_at__gte=start_date).count()
+        delivered_messages = Message.objects.filter(
+            sent_at__gte=start_date,
+            status="success"
+        ).count()
+        
+        # Statistiques par jour
+        daily_stats = Message.objects.filter(
+            sent_at__gte=start_date
+        ).annotate(
+            date=TruncDate('sent_at')
+        ).values('date').annotate(
+            total=Count('id'),
+            delivered=Count('id', filter=F('status') == 'success')
+        ).order_by('date')
+        
+        # Calcul du taux de livraison
+        delivery_rate = (delivered_messages / total_messages * 100) if total_messages > 0 else 0
+        
+        return {
+            "total_messages": total_messages,
+            "delivered_messages": delivered_messages,
+            "delivery_rate": round(delivery_rate, 2),
+            "daily_stats": list(daily_stats),
+            "period": {
+                "start": start_date,
+                "end": datetime.now()
+            }
+        }
+
+    def get_campaign_stats(self, campaign_id: int) -> Dict[str, Any]:
+        """
+        Récupère les statistiques détaillées d'une campagne.
+        
+        Args:
+            campaign_id (int): ID de la campagne
+            
+        Returns:
+            Dict[str, Any]: Statistiques de la campagne
+        """
+        from .models import Message  # Import déplacé ici pour éviter l'importation circulaire
+        
+        messages = Message.objects.filter(campaign_id=campaign_id)
+        
+        total_messages = messages.count()
+        delivered_messages = messages.filter(status="success").count()
+        failed_messages = messages.filter(status="error").count()
+        
+        # Statistiques par jour
+        daily_stats = messages.annotate(
+            date=TruncDate('sent_at')
+        ).values('date').annotate(
+            total=Count('id'),
+            delivered=Count('id', filter=F('status') == 'success'),
+            failed=Count('id', filter=F('status') == 'error')
+        ).order_by('date')
+        
+        # Calcul des taux
+        delivery_rate = (delivered_messages / total_messages * 100) if total_messages > 0 else 0
+        failure_rate = (failed_messages / total_messages * 100) if total_messages > 0 else 0
+        
+        return {
+            "total_messages": total_messages,
+            "delivered_messages": delivered_messages,
+            "failed_messages": failed_messages,
+            "delivery_rate": round(delivery_rate, 2),
+            "failure_rate": round(failure_rate, 2),
+            "daily_stats": list(daily_stats)
         }
