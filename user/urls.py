@@ -56,4 +56,10 @@ urlpatterns = [
     path('credits/process-payment/', views.ProcessPaymentView.as_view(), name='process_payment'),
     path('credits/history/', views.TransactionHistoryView.as_view(), name='transaction_history'),
     path('credits/verify-promo-code/', views.VerifyPromoCodeView.as_view(), name='verify_promo_code'),
+
+    # URLs d'administration
+    path('admin/dashboard/', views.AdminDashboardView.as_view(), name='admin_dashboard'),
+    path('admin/users/', views.AdminUserListView.as_view(), name='admin_user_list'),
+    path('admin/users/<int:pk>/', views.UserDetailView.as_view(), name='admin_user_detail'),
+    path('admin/transactions/', views.AdminTransactionListView.as_view(), name='admin_transaction_list'),
 ]

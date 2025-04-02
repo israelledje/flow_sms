@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Transactions - Administration FLOW SMS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- En-tête -->
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Transactions</h1>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Total des transactions</dt>
+                    <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ total_transactions }}</dd>
+                </div>
+                <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <i class="fa-solid fa-receipt text-blue-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Montant total</dt>
+                    <dd class="mt-1 text-3xl font-semibold text-green-600">{{ total_amount|floatformat:0 }} FCFA</dd>
+                </div>
+                <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <i class="fa-solid fa-money-bill-wave text-green-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-6 border-b border-gray-100">
+            <h2 class="text-lg font-medium text-gray-900">Filtres</h2>
+        </div>
+        <form method="get" class="p-6 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                    <div class="relative">
+                        <select name="status" id="status" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10">
+                            <option value="">Tous les statuts</option>
+                            <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Complétée</option>
+                            <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>En attente</option>
+                            <option value="FAILED" {% if status_filter == 'FAILED' %}selected{% endif %}>Échouée</option>
+                        </select>
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-circle-check text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="date_from" class="block text-sm font-medium text-gray-700 mb-2">Date de début</label>
+                    <div class="relative">
+                        <input type="date" name="date_from" id="date_from" value="{{ date_from }}"
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-calendar text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="date_to" class="block text-sm font-medium text-gray-700 mb-2">Date de fin</label>
+                    <div class="relative">
+                        <input type="date" name="date_to" id="date_to" value="{{ date_to }}"
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-calendar text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="q" class="block text-sm font-medium text-gray-700 mb-2">Rechercher</label>
+                    <div class="relative">
+                        <input type="text" name="q" id="q" value="{{ search_query }}"
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10"
+                            placeholder="Référence, email, nom...">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                <a href="{% url 'user:admin_transaction_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fa-solid fa-xmark mr-2"></i>
+                    Réinitialiser
+                </a>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fa-solid fa-filter mr-2"></i>
+                    Filtrer
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Liste des transactions -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {% if transactions %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Référence</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crédits</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Méthode</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ transaction.reference }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-8 w-8">
+                                    {% if transaction.user.profile_photo %}
+                                    <img class="h-8 w-8 rounded-full" src="{{ transaction.user.profile_photo.url }}" alt="">
+                                    {% else %}
+                                    <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <i class="fa-solid fa-user text-gray-500"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        <a href="{% url 'user:admin_user_detail' pk=transaction.user.pk %}" class="hover:text-blue-600">
+                                            {{ transaction.user.get_full_name }}
+                                        </a>
+                                    </div>
+                                    <div class="text-sm text-gray-500">{{ transaction.user.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ transaction.get_transaction_type_display }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ transaction.price|floatformat:0 }} FCFA
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ transaction.amount }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ transaction.get_payment_method_display }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if transaction.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                {% elif transaction.status == 'PENDING' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ transaction.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ transaction.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-gray-500">
+            Aucune transaction trouvée
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

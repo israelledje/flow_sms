@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ user_detail.get_full_name }} - FLOW SMS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- En-tête -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div class="flex items-start justify-between">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-16 w-16">
+                    {% if user_detail.profile_photo %}
+                    <img class="h-16 w-16 rounded-full" src="{{ user_detail.profile_photo.url }}" alt="">
+                    {% else %}
+                    <div class="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
+                        <i class="fa-solid fa-user text-gray-500 text-2xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="ml-6">
+                    <h2 class="text-2xl font-bold text-gray-900">{{ user_detail.get_full_name }}</h2>
+                    <div class="mt-1 flex items-center space-x-4">
+                        <span class="text-gray-500">{{ user_detail.email }}</span>
+                        <span class="text-gray-300">|</span>
+                        <span class="text-gray-500">{{ user_detail.telephone }}</span>
+                    </div>
+                    <div class="mt-2 flex items-center space-x-4">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            {{ user_detail.get_account_type_display }}
+                        </span>
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                            {{ user_detail.get_user_type_display }}
+                        </span>
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if user_detail.verification_status == 'VERIFIE' %}bg-green-100 text-green-800
+                            {% elif user_detail.verification_status == 'EN_ATTENTE' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ user_detail.get_verification_status_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex space-x-3">
+                {% if user_detail.verification_status == 'EN_ATTENTE' %}
+                <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="verify">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <i class="fa-solid fa-check mr-2"></i>
+                        Vérifier
+                    </button>
+                </form>
+                <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reject">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <i class="fa-solid fa-xmark mr-2"></i>
+                        Rejeter
+                    </button>
+                </form>
+                {% endif %}
+                
+                {% if user_detail.is_active %}
+                <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="deactivate">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fa-solid fa-ban mr-2"></i>
+                        Désactiver
+                    </button>
+                </form>
+                {% else %}
+                <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="activate">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fa-solid fa-check-circle mr-2"></i>
+                        Activer
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Informations détaillées -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Informations personnelles -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Informations personnelles</h3>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nationalité</label>
+                        <div class="mt-1 text-sm text-gray-900">{{ user_detail.nationalite }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Adresse</label>
+                        <div class="mt-1 text-sm text-gray-900">{{ user_detail.adresse|default:"Non renseignée" }}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Ville</label>
+                        <div class="mt-1 text-sm text-gray-900">{{ user_detail.ville }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Pays</label>
+                        <div class="mt-1 text-sm text-gray-900">{{ user_detail.pays }}</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Secteur d'activité</label>
+                    <div class="mt-1 text-sm text-gray-900">{{ user_detail.secteur_activite }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations entreprise -->
+        {% if user_detail.account_type == 'ENTREPRISE' %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Informations entreprise</h3>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">NIU</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ user_detail.niu }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">RCCM</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ user_detail.rccm }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Site web</dt>
+                    <dd class="mt-1 text-sm text-gray-900">
+                        {% if user_detail.site_web %}
+                        <a href="{{ user_detail.site_web }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                            {{ user_detail.site_web }}
+                        </a>
+                        {% else %}
+                        Non renseigné
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Nombre d'employés</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ user_detail.nombre_employes|default:"Non renseigné" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Description</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ user_detail.description|default:"Aucune description" }}</dd>
+                </div>
+            </dl>
+        </div>
+        {% endif %}
+
+        <!-- Statistiques -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Statistiques</h3>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Crédits disponibles</label>
+                        <div class="mt-1 text-2xl font-bold text-gray-900">{{ user_detail.credits }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Date d'inscription</label>
+                        <div class="mt-1 text-sm text-gray-900">{{ user_detail.date_creation|date:"d/m/Y H:i" }}</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Dernière connexion</label>
+                    <div class="mt-1 text-sm text-gray-900">{{ user_detail.last_login|date:"d/m/Y H:i"|default:"Jamais" }}</div>
+                </div>
+
+                <!-- Formulaire de crédit de SMS -->
+                <div class="mt-6 border-t border-gray-200 pt-6">
+                    <h4 class="text-sm font-medium text-gray-900 mb-4">Créditer des SMS</h4>
+                    <form method="post" class="space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="credit_sms">
+                        <div>
+                            <label for="credit_amount" class="block text-sm font-medium text-gray-700">Nombre de SMS</label>
+                            <input type="number" name="credit_amount" id="credit_amount" min="1" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="credit_reason" class="block text-sm font-medium text-gray-700">Raison</label>
+                            <textarea name="credit_reason" id="credit_reason" rows="2" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></textarea>
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fa-solid fa-plus mr-2"></i>
+                            Créditer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire de modification des informations -->
+    <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-6">Modifier les informations</h3>
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_info">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" name="email" id="email" value="{{ user_detail.email }}" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="telephone" class="block text-sm font-medium text-gray-700">Téléphone</label>
+                    <input type="tel" name="telephone" id="telephone" value="{{ user_detail.telephone }}" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                {% if user_detail.account_type == 'ENTREPRISE' %}
+                <div>
+                    <label for="nom" class="block text-sm font-medium text-gray-700">Nom de l'entreprise</label>
+                    <input type="text" name="nom" id="nom" value="{{ user_detail.nom }}" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                {% else %}
+                <div>
+                    <label for="nom" class="block text-sm font-medium text-gray-700">Nom</label>
+                    <input type="text" name="nom" id="nom" value="{{ user_detail.nom }}" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="prenom" class="block text-sm font-medium text-gray-700">Prénom</label>
+                    <input type="text" name="prenom" id="prenom" value="{{ user_detail.prenom }}" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                {% endif %}
+                <div>
+                    <label for="user_type" class="block text-sm font-medium text-gray-700">Type d'utilisateur</label>
+                    <select name="user_type" id="user_type" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <option value="CLIENT" {% if user_detail.user_type == 'CLIENT' %}selected{% endif %}>Client</option>
+                        <option value="SUPPORT" {% if user_detail.user_type == 'SUPPORT' %}selected{% endif %}>Support</option>
+                        <option value="ADMIN" {% if user_detail.user_type == 'ADMIN' %}selected{% endif %}>Administrateur</option>
+                        <option value="REVENDEUR" {% if user_detail.user_type == 'REVENDEUR' %}selected{% endif %}>Revendeur</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fa-solid fa-save mr-2"></i>
+                    Enregistrer
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Transactions récentes -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Transactions récentes</h3>
+                <a href="{% url 'user:admin_transaction_list' %}?q={{ user_detail.email }}" class="text-sm text-blue-600 hover:text-blue-800">
+                    Voir toutes →
+                </a>
+            </div>
+        </div>
+        {% if transactions %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Référence</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ transaction.reference }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ transaction.get_transaction_type_display }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ transaction.amount }} crédits
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if transaction.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                {% elif transaction.status == 'PENDING' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ transaction.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ transaction.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-gray-500">
+            Aucune transaction
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sender IDs -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Sender IDs</h3>
+                <a href="{% url 'user:sender_id_admin_list' %}" class="text-sm text-blue-600 hover:text-blue-800">
+                    Gérer les Sender IDs →
+                </a>
+            </div>
+        </div>
+        {% if sender_ids %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Par défaut</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for sender_id in sender_ids %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ sender_id.name }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            {{ sender_id.description|truncatechars:50 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if sender_id.status == 'APPROUVE' %}bg-green-100 text-green-800
+                                {% elif sender_id.status == 'EN_ATTENTE' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ sender_id.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if sender_id.is_default %}
+                            <span class="text-green-600">
+                                <i class="fa-solid fa-check"></i>
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-gray-500">
+            Aucun Sender ID
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

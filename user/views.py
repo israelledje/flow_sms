@@ -22,6 +22,7 @@ from django.views import View
 from decimal import Decimal
 import json
 import pytz
+from django.core.paginator import Paginator
 
 from .forms import UserRegistrationForm, AccountDeactivationForm, SenderIDForm, SenderIDAdminForm
 from .models import User, SenderID, CreditTransaction, PromoCode
@@ -669,3 +670,327 @@ class PromoCodeDetailView(LoginRequiredMixin, View):
                 'success': False,
                 'message': str(e)
             }, status=400)
+
+class UserDetailView(LoginRequiredMixin, View):
+    template_name = 'user/admin/user_detail.html'
+
+    def get(self, request, pk):
+        user_detail = get_object_or_404(User, pk=pk)
+        transactions = CreditTransaction.objects.filter(user=user_detail).order_by('-created_at')[:5]
+        sender_ids = SenderID.objects.filter(user=user_detail)
+        
+        context = {
+            'user_detail': user_detail,
+            'transactions': transactions,
+            'sender_ids': sender_ids,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, pk):
+        user_detail = get_object_or_404(User, pk=pk)
+        action = request.POST.get('action')
+
+        if action == 'credit_sms':
+            try:
+                amount = int(request.POST.get('credit_amount'))
+                reason = request.POST.get('credit_reason')
+                
+                if amount <= 0:
+                    raise ValueError("Le montant doit être positif")
+                
+                # Créer la transaction
+                transaction = CreditTransaction.objects.create(
+                    user=user_detail,
+                    amount=amount,
+                    transaction_type='CREDIT',
+                    status='COMPLETED',
+                    description=reason
+                )
+                
+                # Mettre à jour les crédits de l'utilisateur
+                user_detail.credits += amount
+                user_detail.save()
+                
+                messages.success(request, f"{amount} SMS ont été crédités avec succès")
+            except ValueError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, "Une erreur est survenue lors du crédit des SMS")
+        
+        elif action == 'update_info':
+            try:
+                user_detail.email = request.POST.get('email')
+                user_detail.telephone = request.POST.get('telephone')
+                user_detail.user_type = request.POST.get('user_type')
+                
+                if user_detail.account_type == 'ENTREPRISE':
+                    user_detail.nom = request.POST.get('nom')
+                else:
+                    user_detail.nom = request.POST.get('nom')
+                    user_detail.prenom = request.POST.get('prenom')
+                
+                user_detail.save()
+                messages.success(request, "Les informations ont été mises à jour avec succès")
+            except Exception as e:
+                messages.error(request, "Une erreur est survenue lors de la mise à jour des informations")
+        
+        return redirect('user:admin_user_detail', pk=pk)
+
+class AdminUserListView(LoginRequiredMixin, View):
+    template_name = 'user/admin/user_list.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_staff and not request.user.is_superuser:
+            messages.error(request, "Vous n'avez pas les permissions nécessaires.")
+            return redirect('user:dashboard')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        # Filtres
+        account_type = request.GET.get('account_type')
+        verification_status = request.GET.get('verification_status')
+        search_query = request.GET.get('q')
+        
+        # Base de la requête
+        users = User.objects.all()
+        
+        # Appliquer les filtres
+        if account_type:
+            users = users.filter(account_type=account_type)
+        
+        if verification_status:
+            users = users.filter(verification_status=verification_status)
+        
+        if search_query:
+            users = users.filter(
+                Q(email__icontains=search_query) |
+                Q(nom__icontains=search_query) |
+                Q(prenom__icontains=search_query) |
+                Q(telephone__icontains=search_query)
+            )
+        
+        # Statistiques
+        total_users = users.count()
+        active_users = users.filter(is_active=True).count()
+        pending_verification = users.filter(verification_status='EN_ATTENTE').count()
+        new_users = users.filter(
+            date_creation__gte=timezone.now() - timedelta(days=30)
+        ).count()
+        
+        context = {
+            'users': users.order_by('-date_creation'),
+            'stats': {
+                'total': total_users,
+                'active': active_users,
+                'pending': pending_verification,
+                'new': new_users,
+            },
+            'filters': {
+                'account_type': account_type,
+                'verification_status': verification_status,
+                'search_query': search_query,
+            },
+            'account_types': User.AccountTypes.choices,
+            'verification_statuses': User.VerificationStatus.choices,
+            'total_users': User.objects.count(),
+            'active_users': User.objects.filter(is_active=True).count(),
+            'pending_verification': User.objects.filter(verification_status=User.VerificationStatus.EN_ATTENTE).count(),
+            'new_users': User.objects.filter(date_creation__gte=timezone.now() - timezone.timedelta(days=30)).count(),
+        }
+        
+        return render(request, self.template_name, context)
+
+class AdminDashboardView(LoginRequiredMixin, View):
+    template_name = 'user/admin/dashboard.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_staff and not request.user.is_superuser:
+            messages.error(request, "Vous n'avez pas les permissions nécessaires.")
+            return redirect('user:dashboard')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        # Période de 30 jours
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        
+        # Statistiques utilisateurs
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        pending_verification = User.objects.filter(verification_status='EN_ATTENTE').count()
+        new_users = User.objects.filter(date_creation__gte=thirty_days_ago).count()
+        
+        # Statistiques Sender IDs
+        total_sender_ids = SenderID.objects.count()
+        pending_sender_ids = SenderID.objects.filter(status='EN_ATTENTE').count()
+        approved_sender_ids = SenderID.objects.filter(status='APPROUVE').count()
+        rejected_sender_ids = SenderID.objects.filter(status='REJETE').count()
+        
+        # Statistiques des transactions
+        transaction_stats = {
+            'credits_sold': CreditTransaction.objects.filter(
+                created_at__gte=thirty_days_ago,
+                status='COMPLETED'
+            ).aggregate(total=Sum('amount'))['total'] or 0,
+            'revenue': CreditTransaction.objects.filter(
+                created_at__gte=thirty_days_ago,
+                status='COMPLETED'
+            ).aggregate(total=Sum('price'))['total'] or 0,
+            'pending': CreditTransaction.objects.filter(
+                status='PENDING'
+            ).count(),
+            'failed': CreditTransaction.objects.filter(
+                created_at__gte=thirty_days_ago,
+                status='FAILED'
+            ).count()
+        }
+        
+        # Données de vente sur 30 jours
+        sales_data = []
+        for i in range(30):
+            date = timezone.now() - timedelta(days=i)
+            day_sales = CreditTransaction.objects.filter(
+                status='COMPLETED',
+                created_at__date=date.date()
+            ).aggregate(
+                total=Sum('price')
+            )['total'] or 0
+            
+            sales_data.append({
+                'date': date.strftime('%d/%m'),
+                'amount': float(day_sales)
+            })
+        
+        sales_data.reverse()
+        
+        # Activités récentes
+        recent_activities = []
+        
+        # Nouveaux utilisateurs
+        new_users_list = User.objects.filter(
+            date_creation__gte=thirty_days_ago
+        ).order_by('-date_creation')[:5]
+        
+        for user in new_users_list:
+            recent_activities.append({
+                'type': 'user',
+                'title': f'Nouvel utilisateur: {user.get_full_name()}',
+                'description': f'Type: {user.get_account_type_display()}',
+                'time': user.date_creation
+            })
+        
+        # Transactions récentes
+        recent_transactions = CreditTransaction.objects.filter(
+            created_at__gte=thirty_days_ago
+        ).select_related('user').order_by('-created_at')[:5]
+        
+        for transaction in recent_transactions:
+            recent_activities.append({
+                'type': 'transaction',
+                'title': f'Transaction: {transaction.reference}',
+                'description': f'{transaction.amount} crédits - {transaction.get_status_display()}',
+                'time': transaction.created_at
+            })
+        
+        # Sender IDs récents
+        recent_sender_ids = SenderID.objects.filter(
+            date_creation__gte=thirty_days_ago
+        ).select_related('user').order_by('-date_creation')[:5]
+        
+        for sender_id in recent_sender_ids:
+            recent_activities.append({
+                'type': 'sender_id',
+                'title': f'Nouveau Sender ID: {sender_id.name}',
+                'description': f'Status: {sender_id.get_status_display()}',
+                'time': sender_id.date_creation
+            })
+        
+        # Trier toutes les activités par date
+        recent_activities.sort(key=lambda x: x['time'], reverse=True)
+        recent_activities = recent_activities[:10]
+        
+        context = {
+            'user_stats': {
+                'total': total_users,
+                'active': active_users,
+                'pending': pending_verification,
+                'new': new_users
+            },
+            'sender_id_stats': {
+                'total': total_sender_ids,
+                'pending': pending_sender_ids,
+                'approved': approved_sender_ids,
+                'rejected': rejected_sender_ids
+            },
+            'transaction_stats': transaction_stats,
+            'sales_data': sales_data,
+            'recent_activities': recent_activities
+        }
+        
+        return render(request, self.template_name, context)
+
+class AdminTransactionListView(LoginRequiredMixin, View):
+    template_name = 'user/admin/transaction_list.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_staff and not request.user.is_superuser:
+            messages.error(request, "Vous n'avez pas les permissions nécessaires.")
+            return redirect('user:dashboard')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        # Récupérer les paramètres de filtrage
+        search_query = request.GET.get('q', '')
+        status_filter = request.GET.get('status', '')
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+
+        # Construire la requête de base
+        transactions = CreditTransaction.objects.all().order_by('-created_at')
+
+        # Appliquer les filtres
+        if search_query:
+            transactions = transactions.filter(
+                Q(user__email__icontains=search_query) |
+                Q(user__nom__icontains=search_query) |
+                Q(user__prenom__icontains=search_query) |
+                Q(reference__icontains=search_query)
+            )
+
+        if status_filter:
+            transactions = transactions.filter(status=status_filter)
+
+        if date_from:
+            try:
+                date_from = datetime.strptime(date_from, '%Y-%m-%d')
+                transactions = transactions.filter(created_at__gte=date_from)
+            except ValueError:
+                pass
+
+        if date_to:
+            try:
+                date_to = datetime.strptime(date_to, '%Y-%m-%d')
+                transactions = transactions.filter(created_at__lte=date_to)
+            except ValueError:
+                pass
+
+        # Calculer les statistiques
+        total_transactions = transactions.count()
+        total_amount = transactions.filter(status='COMPLETED').aggregate(
+            total=Sum('price')
+        )['total'] or 0
+
+        # Pagination
+        paginator = Paginator(transactions, 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context = {
+            'transactions': page_obj,
+            'search_query': search_query,
+            'status_filter': status_filter,
+            'date_from': date_from,
+            'date_to': date_to,
+            'total_transactions': total_transactions,
+            'total_amount': total_amount,
+        }
+        return render(request, self.template_name, context)

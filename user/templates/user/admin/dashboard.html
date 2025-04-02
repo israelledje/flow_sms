@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Tableau de bord - Administration FLOW SMS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- En-tête -->
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Tableau de bord administrateur</h1>
+    </div>
+
+    <!-- Statistiques utilisateurs -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">Total utilisateurs</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ user_stats.total }}</dd>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+                <span class="text-green-600">
+                    <i class="fa-solid fa-user-plus mr-1"></i>
+                    {{ user_stats.new }} nouveaux
+                </span>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">Utilisateurs actifs</dt>
+            <dd class="mt-1 text-3xl font-semibold text-green-600">{{ user_stats.active }}</dd>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+                <span>{{ user_stats.active|floatformat:1 }}% du total</span>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">En attente de vérification</dt>
+            <dd class="mt-1 text-3xl font-semibold text-yellow-600">{{ user_stats.pending }}</dd>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+                <a href="{% url 'user:admin_user_list' %}?verification_status=EN_ATTENTE" class="text-yellow-600 hover:text-yellow-800">
+                    <i class="fa-solid fa-arrow-right mr-1"></i>
+                    Voir les demandes
+                </a>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">Sender IDs en attente</dt>
+            <dd class="mt-1 text-3xl font-semibold text-yellow-600">{{ sender_id_stats.pending }}</dd>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+                <a href="{% url 'user:sender_id_admin_list' %}" class="text-yellow-600 hover:text-yellow-800">
+                    <i class="fa-solid fa-arrow-right mr-1"></i>
+                    Voir les demandes
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques transactions -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">Crédits vendus (30j)</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ transaction_stats.credits_sold }}</dd>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">Chiffre d'affaires (30j)</dt>
+            <dd class="mt-1 text-3xl font-semibold text-green-600">{{ transaction_stats.revenue|floatformat:0 }} FCFA</dd>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">Transactions en attente</dt>
+            <dd class="mt-1 text-3xl font-semibold text-yellow-600">{{ transaction_stats.pending }}</dd>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+                <a href="{% url 'user:admin_transaction_list' %}?status=PENDING" class="text-yellow-600 hover:text-yellow-800">
+                    <i class="fa-solid fa-arrow-right mr-1"></i>
+                    Voir les transactions
+                </a>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <dt class="text-sm font-medium text-gray-500">Transactions échouées (30j)</dt>
+            <dd class="mt-1 text-3xl font-semibold text-red-600">{{ transaction_stats.failed }}</dd>
+            <div class="mt-2 flex items-center text-sm text-gray-500">
+                <a href="{% url 'user:admin_transaction_list' %}?status=FAILED" class="text-red-600 hover:text-red-800">
+                    <i class="fa-solid fa-arrow-right mr-1"></i>
+                    Voir les transactions
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphique des ventes -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Ventes sur les 30 derniers jours</h3>
+        <div class="relative" style="height: 300px;">
+            <canvas id="salesChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Activités récentes -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Activités récentes</h3>
+        {% if recent_activities %}
+        <div class="flow-root">
+            <ul role="list" class="-mb-8">
+                {% for activity in recent_activities %}
+                <li>
+                    <div class="relative pb-8">
+                        {% if not forloop.last %}
+                        <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                        {% endif %}
+                        <div class="relative flex space-x-3">
+                            <div>
+                                <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white 
+                                    {% if activity.type == 'user' %}bg-blue-500
+                                    {% elif activity.type == 'transaction' %}bg-green-500
+                                    {% else %}bg-yellow-500{% endif %}">
+                                    {% if activity.type == 'user' %}
+                                    <i class="fa-solid fa-user text-white"></i>
+                                    {% elif activity.type == 'transaction' %}
+                                    <i class="fa-solid fa-money-bill text-white"></i>
+                                    {% else %}
+                                    <i class="fa-solid fa-id-card text-white"></i>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                <div>
+                                    <p class="text-sm text-gray-500">{{ activity.title }}</p>
+                                    <p class="mt-0.5 text-sm text-gray-600">{{ activity.description }}</p>
+                                </div>
+                                <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                                    {{ activity.time|date:"d/m/Y H:i" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% else %}
+        <div class="text-center text-gray-500">
+            Aucune activité récente
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    const salesData = {{ sales_data|safe }};
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: salesData.map(d => d.date),
+            datasets: [{
+                label: 'Ventes (FCFA)',
+                data: salesData.map(d => d.amount),
+                borderColor: '#10B981',
+                backgroundColor: '#10B98120',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString() + ' FCFA';
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
