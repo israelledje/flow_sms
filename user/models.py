@@ -5,6 +5,11 @@ from django.core.validators import RegexValidator
 import pytz
 from django.utils import timezone
 from decimal import Decimal
+import logging
+from threading import Thread
+
+# Configuration du logger
+logger = logging.getLogger(__name__)
 
 class User(AbstractUser):
     class AccountTypes(models.TextChoices):
@@ -342,6 +347,27 @@ class CreditTransaction(models.Model):
         verbose_name=_("Code promo"),
         help_text=_("Code promo appliqué à la transaction")
     )
+    promo_discount = models.DecimalField(
+        _("Réduction promo"),
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text=_("Pourcentage de réduction appliqué")
+    )
+    phone_number = models.CharField(
+        _("Numéro de téléphone"),
+        max_length=20,
+        null=True,
+        blank=True,
+        help_text=_("Numéro de téléphone pour le paiement mobile")
+    )
+    pin = models.CharField(
+        _("Code PIN"),
+        max_length=10,
+        null=True,
+        blank=True,
+        help_text=_("Code PIN pour le paiement mobile")
+    )
     description = models.TextField(_("Description"), blank=True)
     reference = models.CharField(
         _("Référence"),
@@ -379,19 +405,90 @@ class CreditTransaction(models.Model):
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             random_suffix = ''.join([str(random.randint(0, 9)) for _ in range(6)])
             self.reference = f"CRD-{timestamp}-{random_suffix}"
+            logger.info(f"Génération d'une nouvelle référence de transaction: {self.reference}")
 
         if self.status == 'COMPLETED' and self.transaction_type == 'PURCHASE':
             # Ajouter les crédits au compte de l'utilisateur
+            logger.info(f"Tentative d'ajout de {self.amount} crédits pour l'utilisateur {self.user.username}")
             self.user.add_credits(self.amount)
+            logger.info(f"Crédits ajoutés avec succès. Nouveau solde: {self.user.credits}")
         elif self.status == 'COMPLETED' and self.transaction_type == 'REFUND':
             # Rembourser les crédits
+            logger.info(f"Tentative de remboursement de {self.amount} crédits pour l'utilisateur {self.user.username}")
             self.user.add_credits(self.amount)
+            logger.info(f"Remboursement effectué avec succès. Nouveau solde: {self.user.credits}")
 
         super().save(*args, **kwargs)
+        logger.info(f"Transaction {self.reference} sauvegardée avec le statut {self.status}")
 
     def process_payment(self):
-        """Traite le paiement et met à jour le statut de la transaction."""
-        # Ici, vous implémenterez la logique de paiement avec les différents fournisseurs
-        # Pour l'instant, on simule un paiement réussi
-        self.status = 'COMPLETED'
-        self.save()
+        """
+        Traite le paiement et ajoute les crédits au compte de l'utilisateur
+        """
+        try:
+            logger.info(f"Début du traitement du paiement pour la transaction {self.reference}")
+            
+            # Vérifier si la transaction a déjà été traitée
+            if self.status == 'COMPLETED':
+                logger.warning(f"Transaction {self.reference} déjà traitée")
+                return True
+                
+            # Vérifier si la transaction a échoué
+            if self.status == 'FAILED':
+                logger.warning(f"Transaction {self.reference} déjà marquée comme échouée")
+                return False
+            
+            # Simuler un paiement réussi
+            self.status = 'COMPLETED'
+            self.save()
+            logger.info(f"Statut de la transaction {self.reference} mis à jour à COMPLETED")
+            
+            # Ajouter les crédits au compte de l'utilisateur
+            logger.info(f"Tentative d'ajout de {self.amount} crédits pour l'utilisateur {self.user.username}")
+            self.user.add_credits(self.amount)
+            logger.info(f"Crédits ajoutés avec succès. Nouveau solde: {self.user.credits}")
+            
+            # Envoyer l'email de confirmation de manière asynchrone
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            def send_confirmation_email():
+                try:
+                    subject = f'Confirmation d\'achat de crédits SMS - {self.amount} crédits'
+                    message = f'''
+                    Bonjour {self.user.username},
+                    
+                    Votre achat de {self.amount} crédits SMS a été traité avec succès.
+                    Montant payé : {self.price} FCFA
+                    Date : {self.created_at.strftime('%d/%m/%Y %H:%M')}
+                    
+                    Votre nouveau solde est de {self.user.credits} crédits.
+                    
+                    Merci de votre confiance,
+                    L'équipe Flow SMS
+                    '''
+                    
+                    logger.info(f"Tentative d'envoi d'email de confirmation à {self.user.email}")
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [self.user.email],
+                        fail_silently=True,
+                    )
+                    logger.info("Email de confirmation envoyé avec succès")
+                except Exception as e:
+                    logger.error(f"Erreur lors de l'envoi de l'email: {str(e)}")
+            
+            # Démarrer l'envoi d'email dans un thread séparé
+            email_thread = Thread(target=send_confirmation_email)
+            email_thread.start()
+            
+            logger.info(f"Traitement du paiement terminé avec succès pour la transaction {self.reference}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors du traitement du paiement pour la transaction {self.reference}: {str(e)}")
+            self.status = 'FAILED'
+            self.save()
+            logger.error(f"Transaction {self.reference} marquée comme échouée")
+            return False

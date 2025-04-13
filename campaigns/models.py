@@ -163,7 +163,7 @@ class Message(models.Model):
     error_code = models.CharField(max_length=50, blank=True)
     error_description = models.TextField(blank=True)
     credits_used = models.IntegerField(default=0)
-    sent_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         ordering = ['-sent_at']

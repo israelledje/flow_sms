@@ -23,6 +23,10 @@ from decimal import Decimal
 import json
 import pytz
 from django.core.paginator import Paginator
+import logging
+
+# Configuration du logger
+logger = logging.getLogger(__name__)
 
 from .forms import UserRegistrationForm, AccountDeactivationForm, SenderIDForm, SenderIDAdminForm
 from .models import User, SenderID, CreditTransaction, PromoCode
@@ -119,7 +123,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         delivery_stats = sms_service.get_delivery_stats(days=30)
         
         # Statistiques des campagnes
-        now = datetime.now()
+        now = timezone.now()
         active_campaigns = Campaign.objects.filter(
             user=self.request.user,
             status='active'
@@ -206,11 +210,50 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 'time': campaign.created_at.strftime('%d/%m/%Y %H:%M')
             })
         
+        # Transactions de crédit récentes
+        recent_transactions = CreditTransaction.objects.filter(
+            user=self.request.user
+        ).order_by('-created_at')[:5]
+        
+        for transaction in recent_transactions:
+            recent_activities.append({
+                'type': 'transaction',
+                'title': f'Achat de {transaction.amount} crédits',
+                'description': f'Prix: {transaction.price} FCFA - {transaction.get_status_display()}',
+                'time': transaction.created_at.strftime('%d/%m/%Y %H:%M')
+            })
+        
         context['recent_activities'] = sorted(
             recent_activities,
             key=lambda x: datetime.strptime(x['time'], '%d/%m/%Y %H:%M'),
             reverse=True
         )[:5]
+        
+        return context
+
+class CreditPurchaseView(LoginRequiredMixin, TemplateView):
+    template_name = 'user/credit_purchase.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['user'] = self.request.user
+        
+        # Packages prédéfinis avec les nouveaux tarifs
+        context['credit_packages'] = [
+            {'amount': 5000, 'price': 60000, 'description': 'Pack Découverte - 12 FCFA/SMS'},
+            {'amount': 10000, 'price': 95000, 'description': 'Pack Standard - 9.5 FCFA/SMS'},
+            {'amount': 50000, 'price': 475000, 'description': 'Pack Pro - 9.5 FCFA/SMS'},
+            {'amount': 100000, 'price': 800000, 'description': 'Pack Business - 8 FCFA/SMS'},
+            {'amount': 500000, 'price': 4000000, 'description': 'Pack Entreprise - 8 FCFA/SMS'},
+            {'amount': 1000000, 'price': 6500000, 'description': 'Pack Platinum - 6.5 FCFA/SMS'}
+        ]
+        
+        # Ajouter les méthodes de paiement disponibles
+        context['payment_methods'] = [
+            {'value': 'CREDIT_CARD', 'label': 'Carte de crédit'},
+            {'value': 'ORANGE_MONEY', 'label': 'Orange Money'},
+            {'value': 'MTN_MONEY', 'label': 'MTN Mobile Money'}
+        ]
         
         return context
 
@@ -426,89 +469,132 @@ def sender_id_admin_review(request, pk):
         'sender_id': sender_id
     })
 
-class CreditPurchaseView(LoginRequiredMixin, View):
-    template_name = 'user/credit_purchase.html'
-    
-    def get(self, request):
-        context = {
-            'credit_packages': [
-                {'amount': 100, 'price': 1000, 'bonus': 0},
-                {'amount': 500, 'price': 4500, 'bonus': 50},
-                {'amount': 1000, 'price': 8000, 'bonus': 150},
-                {'amount': 2000, 'price': 15000, 'bonus': 400},
-            ],
-            'user': request.user,
-            'is_staff': request.user.is_staff
-        }
-        return render(request, self.template_name, context)
-
 @method_decorator(require_POST, name='dispatch')
 class ProcessPaymentView(LoginRequiredMixin, View):
+    """
+    Vue pour traiter le paiement des crédits SMS
+    """
     def post(self, request, *args, **kwargs):
         try:
+            # Log des données reçues
+            logger.info(f"Données reçues pour le paiement: {request.body}")
+            
             data = json.loads(request.body)
-            amount = int(data.get('amount', 0))
-            price = Decimal(str(data.get('price', 0)))  # Conversion en Decimal
-            payment_method = data.get('payment_method')
-            promo_code = data.get('promo_code')
-
+            logger.info(f"Données JSON parsées: {data}")
+            
+            # Récupération et validation des données
+            amount = data.get('amount')
+            price = data.get('price')
+            payment_method = data.get('method')
+            promo_code = data.get('promoCode')
+            phone_number = data.get('phoneNumber')
+            pin = data.get('pin')
+            
+            # Log des données extraites
+            logger.info(f"Données extraites - amount: {amount}, price: {price}, payment_method: {payment_method}")
+            
+            # Vérifications de base avec messages d'erreur plus détaillés
+            if not amount:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Le montant des crédits est requis'
+                }, status=400)
+            
+            if not price:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Le prix est requis'
+                }, status=400)
+            
+            if not payment_method:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'La méthode de paiement est requise'
+                }, status=400)
+            
+            # Conversion des types
+            try:
+                amount = int(amount)
+                price = Decimal(str(price))
+            except (ValueError, TypeError) as e:
+                logger.error(f"Erreur de conversion des types: {str(e)}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Format de données invalide'
+                }, status=400)
+            
+            # Vérifier si une transaction est déjà en cours pour cet utilisateur
+            pending_transaction = CreditTransaction.objects.filter(
+                user=request.user,
+                status='PENDING'
+            ).first()
+            
+            if pending_transaction:
+                logger.warning(f"Transaction en cours trouvée pour l'utilisateur {request.user.username}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Une transaction est déjà en cours'
+                }, status=400)
+            
             # Vérifier le code promo si fourni
-            final_price = price
-            promo_instance = None
+            promo_discount = data.get('promoDiscount', 0)
             if promo_code:
                 try:
-                    promo_instance = PromoCode.objects.get(code=promo_code)
-                    if promo_instance.is_valid():
-                        final_price = promo_instance.apply_discount(price)
-                        promo_instance.increment_usage()
-                    else:
-                        return JsonResponse({
-                            'success': False,
-                            'message': 'Code promo invalide ou expiré'
-                        })
+                    promo = PromoCode.objects.get(
+                        code=promo_code,
+                        is_active=True,
+                        valid_until__gte=timezone.now()
+                    )
+                    promo_discount = promo.discount_percentage
+                    logger.info(f"Code promo valide trouvé: {promo_code}")
                 except PromoCode.DoesNotExist:
+                    logger.warning(f"Code promo invalide ou expiré: {promo_code}")
                     return JsonResponse({
                         'success': False,
-                        'message': 'Code promo non trouvé'
-                    })
-
+                        'message': 'Code promo invalide ou expiré'
+                    }, status=400)
+            
             # Créer la transaction
             transaction = CreditTransaction.objects.create(
                 user=request.user,
-                transaction_type='PURCHASE',
                 amount=amount,
-                price=final_price,
+                price=price,
                 payment_method=payment_method,
-                promo_code=promo_instance,
-                status='PENDING'
+                promo_code=promo_code if promo_code else None,
+                promo_discount=promo_discount,
+                phone_number=phone_number,
+                pin=pin
             )
-
-            # Simuler le traitement du paiement
-            transaction.process_payment()
-
-            # Générer et envoyer la facture
-            try:
-                # Générer la facture PDF
-                invoice_generator = InvoiceGenerator(transaction)
-                invoice_filename = invoice_generator.generate()
-
-                # Envoyer la facture par email
-                InvoiceSender.send_invoice(request.user, invoice_filename)
-            except Exception as e:
-                print(f"Erreur lors de la génération/envoi de la facture: {str(e)}")
-                # Ne pas bloquer la transaction si la facture échoue
-
-            return JsonResponse({
-                'success': True,
-                'message': 'Paiement traité avec succès. La facture a été envoyée à votre adresse email.',
-                'transaction_id': transaction.id
-            })
-
-        except Exception as e:
+            logger.info(f"Transaction créée avec succès: {transaction.id}")
+            
+            # Traiter le paiement
+            if transaction.process_payment():
+                logger.info(f"Paiement traité avec succès pour la transaction {transaction.id}")
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Paiement traité avec succès',
+                    'transaction_id': transaction.id,
+                    'new_balance': request.user.credits
+                })
+            else:
+                logger.error(f"Échec du traitement du paiement pour la transaction {transaction.id}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Erreur lors du traitement du paiement'
+                }, status=500)
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Erreur de décodage JSON: {str(e)}")
             return JsonResponse({
                 'success': False,
-                'message': str(e)
-            })
+                'message': 'Format de données JSON invalide'
+            }, status=400)
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors du traitement du paiement: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Une erreur est survenue lors du traitement du paiement'
+            }, status=500)
 
 class TransactionHistoryView(LoginRequiredMixin, TemplateView):
     template_name = 'user/transaction_history.html'

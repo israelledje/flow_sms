@@ -150,8 +150,9 @@ USE_TZ = True
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = env('EMAIL_PORT', default=465)
-EMAIL_USE_SSL = True
+EMAIL_PORT = env('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='Flow SMS <noreply@flowsms.cm>')
@@ -193,3 +194,82 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Créer le dossier media s'il n'existe pas
 if not os.path.exists(MEDIA_ROOT):
     os.makedirs(MEDIA_ROOT)
+
+# Configuration du logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/transactions.log'),
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/errors.log'),
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'user': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'campaigns': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['error_file', 'console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+        'django.security': {
+            'handlers': ['error_file', 'console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+        'ssl': {
+            'handlers': ['error_file', 'console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
+
+# Créer le dossier logs s'il n'existe pas
+if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
+    os.makedirs(os.path.join(BASE_DIR, 'logs'))
+
+# SSL Configuration
+SSL_CERT_FILE = os.path.join(BASE_DIR, 'ssl/certificate.pem')
+SSL_KEY_FILE = os.path.join(BASE_DIR, 'ssl/private.key')
+
+if os.path.exists(SSL_CERT_FILE) and os.path.exists(SSL_KEY_FILE):
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.load_cert_chain(SSL_CERT_FILE, SSL_KEY_FILE)
+    EMAIL_SSL_CERTFILE = SSL_CERT_FILE
+    EMAIL_SSL_KEYFILE = SSL_KEY_FILE
+else:
+    print("Attention: Les fichiers de certificat SSL n'ont pas été trouvés. Veuillez exécuter le script generate_ssl_cert.py")

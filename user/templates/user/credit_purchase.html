@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Acheter des crédits - FLOW SMS{% endblock %}
 
@@ -14,7 +15,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-lg font-medium text-emerald-100">Solde actuel</h2>
-                    <p class="text-4xl font-bold mt-2">{{ user.credits|floatformat:0 }} SMS</p>
+                    <p class="text-4xl font-bold mt-2">{{ user.credits|floatformat:0|format_number }} SMS</p>
                 </div>
                 <div class="bg-white bg-opacity-20 rounded-xl p-4">
                     <i class="fa-solid fa-circle-dollar-to-slot text-3xl"></i>
@@ -27,7 +28,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-lg font-medium text-gray-600">SMS utilisés ce mois</h2>
-                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ user.sms_used_this_month|default:"0" }}</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ user.sms_used_this_month|default:"0"|format_number }}</p>
                 </div>
                 <div class="bg-blue-50 rounded-xl p-4">
                     <i class="fa-solid fa-chart-line text-blue-600 text-2xl"></i>
@@ -57,77 +58,37 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Package 5 000 SMS -->
-            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm p-6 border border-emerald-100 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-1">
+            {% for package in credit_packages %}
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm p-6 border border-emerald-100 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-1 relative {% if package.amount == 100000 %}border-2 border-emerald-500{% endif %}">
+                {% if package.amount == 100000 %}
+                <div class="absolute -top-3 -right-3 bg-emerald-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    Populaire
+                </div>
+                {% endif %}
                 <div class="text-center">
                     <div class="bg-emerald-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                         <i class="fa-solid fa-rocket text-emerald-600 text-2xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900">5 000 SMS</h3>
-                    <p class="text-3xl font-bold text-emerald-600 mt-2">60 000 FCFA</p>
-                    <p class="text-sm text-gray-500 mt-1">12 FCFA/SMS</p>
+                    <h3 class="text-xl font-bold text-gray-900">{{ package.amount|floatformat:0|format_number }} SMS</h3>
+                    <p class="text-3xl font-bold text-emerald-600 mt-2">{{ package.price|floatformat:0|format_number }} FCFA</p>
+                    <p class="text-sm text-gray-500 mt-1">{{ package.description }}</p>
                     <div class="mt-4 text-sm text-emerald-600">
                         <i class="fa-solid fa-check mr-1"></i>
                         Livraison instantanée
                     </div>
                 </div>
-                <button onclick="selectPackage(5000, 60000)" class="mt-6 w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
+                <button onclick="selectPackage({{ package.amount }}, {{ package.price }})" class="mt-6 w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
                     <i class="fa-solid fa-shopping-cart mr-2"></i>
                     Sélectionner
                 </button>
             </div>
-
-            <!-- Package 10 000 SMS -->
-            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm p-6 border-2 border-emerald-200 hover:shadow-lg hover:border-emerald-300 transition-all duration-300 transform hover:-translate-y-1 relative">
-                <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span class="bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                        Populaire
-                    </span>
-                </div>
-                <div class="text-center">
-                    <div class="bg-emerald-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <i class="fa-solid fa-star text-emerald-600 text-2xl"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900">10 000 SMS</h3>
-                    <p class="text-3xl font-bold text-emerald-600 mt-2">100 000 FCFA</p>
-                    <p class="text-sm text-gray-500 mt-1">10 FCFA/SMS</p>
-                    <div class="mt-4 text-sm text-emerald-600">
-                        <i class="fa-solid fa-check mr-1"></i>
-                        Économisez 17%
-                    </div>
-                </div>
-                <button onclick="selectPackage(10000, 100000)" class="mt-6 w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
-                    <i class="fa-solid fa-shopping-cart mr-2"></i>
-                    Sélectionner
-                </button>
-            </div>
-
-            <!-- Montant personnalisé -->
-            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-sm p-6 border border-emerald-100 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-1">
-                <div class="text-center">
-                    <div class="bg-emerald-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <i class="fa-solid fa-sliders text-emerald-600 text-2xl"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900">Montant personnalisé</h3>
-                    <div class="mt-4">
-                        <input type="number" id="customAmount" min="5000" step="1000" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Nombre de SMS" oninput="updateCustomPrice()">
-                    </div>
-                    <div id="customPrice" class="mt-2">
-                        <p class="text-3xl font-bold text-emerald-600">0 FCFA</p>
-                        <p class="text-sm text-gray-500">Prix par SMS calculé automatiquement</p>
-                    </div>
-                </div>
-                <button onclick="selectCustomPackage()" class="mt-6 w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
-                    <i class="fa-solid fa-shopping-cart mr-2"></i>
-                    Sélectionner
-                </button>
-            </div>
+            {% endfor %}
         </div>
     </div>
 
     <!-- Modal de paiement -->
     <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300">
+        <div class="bg-white rounded-2xl p-8 max-w-4xl w-full mx-4 transform transition-all duration-300">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-2xl font-bold text-gray-900">Finaliser l'achat</h3>
                 <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-500 transition-colors">
@@ -135,66 +96,106 @@
                 </button>
             </div>
 
-            <div class="space-y-6">
-                <!-- Résumé de la commande -->
-                <div class="bg-gray-50 rounded-xl p-4">
-                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Résumé de la commande</h4>
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Nombre de SMS</span>
-                            <span class="font-medium" id="modalAmount">0</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Prix par SMS</span>
-                            <span class="font-medium" id="modalPricePerSMS">0 FCFA</span>
-                        </div>
-                        <div class="border-t border-gray-200 pt-3 mt-3">
+            <div class="grid grid-cols-2 gap-8">
+                <!-- Colonne de gauche : Résumé et code promo -->
+                <div class="space-y-6">
+                    <!-- Résumé de la commande -->
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Résumé de la commande</h4>
+                        <div class="space-y-3">
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-900 font-semibold">Prix total</span>
+                                <span class="text-gray-600">Nombre de SMS</span>
+                                <span class="font-medium" id="modalAmount">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Prix total</span>
                                 <span class="text-2xl font-bold text-emerald-600" id="modalTotalPrice">0 FCFA</span>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Code promo -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Code promo (optionnel)</label>
-                    <div class="flex space-x-2">
-                        <input type="text" id="promoCode" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Entrez votre code promo">
-                        <button onclick="applyPromoCode()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">
-                            <i class="fa-solid fa-ticket mr-2"></i>
-                            Appliquer
-                        </button>
+                    <!-- Code promo -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Code promo (optionnel)</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="promoCode" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Entrez votre code promo">
+                            <button onclick="applyPromoCode()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors">
+                                <i class="fa-solid fa-ticket mr-2"></i>
+                                Appliquer
+                            </button>
+                        </div>
+                        <div id="promoCodeResult" class="mt-2 text-sm"></div>
                     </div>
-                    <div id="promoCodeResult" class="mt-2 text-sm"></div>
                 </div>
 
-                <!-- Méthodes de paiement -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement</label>
-                    <div class="space-y-3">
-                        <label class="flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                            <input type="radio" name="paymentMethod" value="CREDIT_CARD" class="text-emerald-600 focus:ring-emerald-500">
-                            <span class="ml-3 flex items-center">
-                                <i class="fa-solid fa-credit-card text-gray-400 mr-2"></i>
-                                Carte de crédit
-                            </span>
-                        </label>
-                        <label class="flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                            <input type="radio" name="paymentMethod" value="ORANGE_MONEY" class="text-emerald-600 focus:ring-emerald-500">
-                            <span class="ml-3 flex items-center">
-                                <i class="fa-solid fa-mobile-screen text-gray-400 mr-2"></i>
-                                Orange Money
-                            </span>
-                        </label>
-                        <label class="flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                            <input type="radio" name="paymentMethod" value="MTN_MONEY" class="text-emerald-600 focus:ring-emerald-500">
-                            <span class="ml-3 flex items-center">
-                                <i class="fa-solid fa-mobile-screen text-gray-400 mr-2"></i>
-                                MTN Mobile Money
-                            </span>
-                        </label>
+                <!-- Colonne de droite : Méthodes de paiement -->
+                <div class="space-y-6">
+                    <!-- Méthodes de paiement -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Méthode de paiement</label>
+                        <div class="space-y-3">
+                            {% for method in payment_methods %}
+                            <label class="flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input type="radio" name="paymentMethod" value="{{ method.value }}" class="text-emerald-600 focus:ring-emerald-500" onchange="showPaymentFields(this.value)">
+                                <span class="ml-3 flex items-center">
+                                    <i class="fa-solid fa-{% if method.value == 'CREDIT_CARD' %}credit-card{% else %}mobile-screen{% endif %} text-gray-400 mr-2"></i>
+                                    {{ method.label }}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Champs de paiement Orange Money -->
+                    <div id="orangeMoneyFields" class="hidden">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Numéro Orange Money</label>
+                                <input type="tel" id="orangeMoneyNumber" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Ex: 6XX XXX XXX">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Code PIN Orange Money</label>
+                                <input type="password" id="orangeMoneyPin" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Entrez votre code PIN">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Champs de paiement MTN Money -->
+                    <div id="mtnMoneyFields" class="hidden">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Numéro MTN Mobile Money</label>
+                                <input type="tel" id="mtnMoneyNumber" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Ex: 6XX XXX XXX">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Code PIN MTN Money</label>
+                                <input type="password" id="mtnMoneyPin" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Entrez votre code PIN">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Champs de paiement par carte -->
+                    <div id="creditCardFields" class="hidden">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Numéro de carte</label>
+                                <input type="text" id="cardNumber" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="XXXX XXXX XXXX XXXX">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Date d'expiration</label>
+                                    <input type="text" id="cardExpiry" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="MM/AA">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">CVV</label>
+                                    <input type="text" id="cardCvv" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="XXX">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nom sur la carte</label>
+                                <input type="text" id="cardName" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Nom complet">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -217,10 +218,10 @@
     let promoDiscount = 0;
 
     function calculatePricePerSMS(amount) {
-        if (amount >= 500000) return 7.5;
-        if (amount >= 50000) return 8;
-        if (amount >= 25000) return 10;
-        return 12;
+        if (amount >= 1000000) return 6.5;  // 6.5 FCFA/SMS pour plus de 1 000 000 SMS
+        if (amount >= 100000) return 8;     // 8 FCFA/SMS pour 100 000 à 999 999 SMS
+        if (amount >= 10000) return 9.5;    // 9.5 FCFA/SMS pour 10 000 à 99 999 SMS
+        return 12;                          // 12 FCFA/SMS pour moins de 10 000 SMS
     }
 
     function calculateTotalPrice(amount) {
@@ -256,7 +257,27 @@
     function selectPackage(amount, price) {
         selectedAmount = amount;
         selectedPrice = price;
-        showPaymentModal();
+        document.getElementById('modalAmount').textContent = amount.toLocaleString();
+        document.getElementById('modalTotalPrice').textContent = price.toLocaleString() + ' FCFA';
+        
+        // Afficher la modale
+        const modal = document.getElementById('paymentModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        
+        // Réinitialiser les champs de paiement
+        document.getElementById('promoCode').value = '';
+        document.getElementById('promoCodeResult').innerHTML = '';
+        promoDiscount = 0;
+        
+        // Cacher tous les champs de paiement
+        document.getElementById('orangeMoneyFields').classList.add('hidden');
+        document.getElementById('mtnMoneyFields').classList.add('hidden');
+        document.getElementById('creditCardFields').classList.add('hidden');
+        
+        // Désélectionner toutes les méthodes de paiement
+        const paymentMethods = document.querySelectorAll('input[name="paymentMethod"]');
+        paymentMethods.forEach(method => method.checked = false);
     }
 
     function selectCustomPackage() {
@@ -280,11 +301,9 @@
     }
 
     function closePaymentModal() {
-        document.getElementById('paymentModal').classList.add('hidden');
-        document.getElementById('paymentModal').classList.remove('flex');
-        document.getElementById('promoCode').value = '';
-        document.getElementById('promoCodeResult').innerHTML = '';
-        promoDiscount = 0;
+        const modal = document.getElementById('paymentModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
     }
 
     function applyPromoCode() {
@@ -323,6 +342,50 @@
             });
     }
 
+    function showPaymentFields(method) {
+        // Cacher tous les champs de paiement
+        document.getElementById('orangeMoneyFields').classList.add('hidden');
+        document.getElementById('mtnMoneyFields').classList.add('hidden');
+        document.getElementById('creditCardFields').classList.add('hidden');
+
+        // Afficher les champs correspondants à la méthode sélectionnée
+        if (method === 'ORANGE_MONEY') {
+            document.getElementById('orangeMoneyFields').classList.remove('hidden');
+        } else if (method === 'MTN_MONEY') {
+            document.getElementById('mtnMoneyFields').classList.remove('hidden');
+        } else if (method === 'CREDIT_CARD') {
+            document.getElementById('creditCardFields').classList.remove('hidden');
+        }
+    }
+
+    function validatePaymentFields(method) {
+        if (method === 'ORANGE_MONEY') {
+            const number = document.getElementById('orangeMoneyNumber').value;
+            const pin = document.getElementById('orangeMoneyPin').value;
+            if (!number || !pin) {
+                showToast('Erreur', 'Veuillez remplir tous les champs Orange Money', 'error');
+                return false;
+            }
+        } else if (method === 'MTN_MONEY') {
+            const number = document.getElementById('mtnMoneyNumber').value;
+            const pin = document.getElementById('mtnMoneyPin').value;
+            if (!number || !pin) {
+                showToast('Erreur', 'Veuillez remplir tous les champs MTN Money', 'error');
+                return false;
+            }
+        } else if (method === 'CREDIT_CARD') {
+            const number = document.getElementById('cardNumber').value;
+            const expiry = document.getElementById('cardExpiry').value;
+            const cvv = document.getElementById('cardCvv').value;
+            const name = document.getElementById('cardName').value;
+            if (!number || !expiry || !cvv || !name) {
+                showToast('Erreur', 'Veuillez remplir tous les champs de la carte', 'error');
+                return false;
+            }
+        }
+        return true;
+    }
+
     function processPayment() {
         const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
         if (!paymentMethod) {
@@ -330,11 +393,71 @@
             return;
         }
 
-        // Simuler le traitement du paiement
-        showToast('Succès', 'Paiement en cours de traitement...', 'success');
-        setTimeout(() => {
-            window.location.href = '/user/dashboard/';
-        }, 2000);
+        if (!validatePaymentFields(paymentMethod.value)) {
+            return;
+        }
+
+        // Récupérer les données de paiement
+        const paymentData = {
+            amount: selectedAmount,
+            price: selectedPrice,
+            method: paymentMethod.value,
+            promoCode: document.getElementById('promoCode').value,
+            promoDiscount: promoDiscount
+        };
+
+        // Ajouter les données spécifiques à la méthode de paiement
+        if (paymentMethod.value === 'ORANGE_MONEY') {
+            paymentData.phoneNumber = document.getElementById('orangeMoneyNumber').value;
+            paymentData.pin = document.getElementById('orangeMoneyPin').value;
+        } else if (paymentMethod.value === 'MTN_MONEY') {
+            paymentData.phoneNumber = document.getElementById('mtnMoneyNumber').value;
+            paymentData.pin = document.getElementById('mtnMoneyPin').value;
+        } else if (paymentMethod.value === 'CREDIT_CARD') {
+            paymentData.cardNumber = document.getElementById('cardNumber').value;
+            paymentData.cardExpiry = document.getElementById('cardExpiry').value;
+            paymentData.cardCvv = document.getElementById('cardCvv').value;
+            paymentData.cardName = document.getElementById('cardName').value;
+        }
+
+        // Envoyer les données au serveur
+        fetch('/user/credits/process-payment/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(paymentData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Succès', 'Paiement effectué avec succès', 'success');
+                setTimeout(() => {
+                    window.location.href = '/user/dashboard/';
+                }, 2000);
+            } else {
+                showToast('Erreur', data.message || 'Une erreur est survenue', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Erreur', 'Une erreur est survenue lors du paiement', 'error');
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 </script>
 {% endblock %} 

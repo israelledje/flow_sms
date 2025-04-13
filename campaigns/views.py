@@ -164,31 +164,39 @@ class CampaignCreateView(LoginRequiredMixin, CreateView):
             from django.apps import apps
             User_SenderId = apps.get_model('user', 'SenderID')
             
-            # Si l'utilisateur est admin, il peut voir tous les Sender IDs approuvés
-            if user.is_staff or user.is_superuser:
-                user_approved_senders = User_SenderId.objects.filter(status="APPROUVE")
-            else:
-                user_approved_senders = User_SenderId.objects.filter(user=user, status="APPROUVE")
+            # Tous les utilisateurs (y compris les admins) ne voient que leurs propres Sender IDs approuvés
+            user_approved_senders = User_SenderId.objects.filter(
+                user=user,
+                status="APPROUVE"
+            )
+            print(f"DEBUG - Sender IDs approuvés de l'utilisateur: {list(user_approved_senders.values('id', 'name'))}")
             
-            # Créer ou mettre à jour les Sender IDs dans l'application campaigns
+            # Récupérer ou créer les SenderId de l'application campaigns correspondants
+            campaign_senders = []
             for user_sender in user_approved_senders:
-                SenderId.objects.get_or_create(
+                # Vérifier si un SenderId correspondant existe déjà
+                campaign_sender, created = SenderId.objects.get_or_create(
                     user_sender_id=user_sender,
                     defaults={
                         'name': user_sender.name,
-                        'status': 'approved',
-                        'user': user_sender.user
+                        'user': user,
+                        'status': 'approved'  # Status dans campaigns.SenderId
                     }
                 )
+                campaign_senders.append(campaign_sender)
             
-            # Récupérer les Sender IDs approuvés pour l'affichage
-            context['sender_ids'] = SenderId.objects.filter(
+            context['senders'] = campaign_senders
+                
+        except Exception as e:
+            print(f"DEBUG - Erreur en essayant de récupérer les Sender IDs depuis l'app user: {str(e)}")
+            # Fallback sur les Sender IDs de l'application campaigns
+            context['senders'] = SenderId.objects.filter(
                 user=user,
                 status='approved'
             )
-        except Exception as e:
-            context['sender_ids'] = []
-            messages.warning(self.request, f"Erreur lors du chargement des Sender IDs: {str(e)}")
+        
+        # Vérifier les variables de user pour débogage
+        print(f"DEBUG - User ID: {user.id}, Username: {user.username}, Is staff: {user.is_staff}, Is superuser: {user.is_superuser}")
         
         # Ajouter les groupes de contacts au contexte
         context['contact_groups'] = ContactGroup.objects.filter(user=user)
@@ -313,17 +321,12 @@ class CampaignUpdateView(LoginRequiredMixin, UpdateView):
             from django.apps import apps
             User_SenderId = apps.get_model('user', 'SenderID')
             
-            # Si l'utilisateur est admin, il peut voir tous les Sender IDs approuvés
-            if user.is_staff or user.is_superuser:
-                user_approved_senders = User_SenderId.objects.filter(status="APPROUVE")
-                print(f"DEBUG - Admin - Tous les Sender IDs approuvés: {list(user_approved_senders.values('id', 'name', 'user__username'))}")
-            else:
-                # Sinon, l'utilisateur ne peut voir que ses propres Sender IDs approuvés
-                user_approved_senders = User_SenderId.objects.filter(
-                    user=user,
-                    status="APPROUVE"
-                )
-                print(f"DEBUG - Utilisateur - Sender IDs approuvés: {list(user_approved_senders.values('id', 'name'))}")
+            # Tous les utilisateurs (y compris les admins) ne voient que leurs propres Sender IDs approuvés
+            user_approved_senders = User_SenderId.objects.filter(
+                user=user,
+                status="APPROUVE"
+            )
+            print(f"DEBUG - Sender IDs approuvés de l'utilisateur: {list(user_approved_senders.values('id', 'name'))}")
             
             # Récupérer ou créer les SenderId de l'application campaigns correspondants
             campaign_senders = []
@@ -344,13 +347,10 @@ class CampaignUpdateView(LoginRequiredMixin, UpdateView):
         except Exception as e:
             print(f"DEBUG - Erreur en essayant de récupérer les Sender IDs depuis l'app user: {str(e)}")
             # Fallback sur les Sender IDs de l'application campaigns
-            if user.is_staff or user.is_superuser:
-                context['senders'] = SenderId.objects.filter(status='approved')
-            else:
-                context['senders'] = SenderId.objects.filter(
-                    user=user,
-                    status='approved'
-                )
+            context['senders'] = SenderId.objects.filter(
+                user=user,
+                status='approved'
+            )
         
         # Vérifier les variables de user pour débogage
         print(f"DEBUG - User ID: {user.id}, Username: {user.username}, Is staff: {user.is_staff}, Is superuser: {user.is_superuser}")
