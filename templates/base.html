@@ -174,6 +174,24 @@
             width: calc(100% - 112px);
         }
 
+        /* Ajustement pour la sidebar admin */
+        .main-content.with-sidebar.with-admin {
+            margin-right: 64px;
+            width: calc(100% - 376px);
+        }
+
+        .main-content.with-sidebar.expanded.with-admin {
+            margin-right: 64px;
+            width: calc(100% - 176px);
+        }
+
+        @media (max-width: 768px) {
+            .main-content.with-sidebar.with-admin {
+                margin-right: 0;
+                width: 100%;
+            }
+        }
+
         /* Styles des toasts */
         .toast-container {
             position: fixed;
@@ -364,80 +382,103 @@
             color: #111827;
             font-size: 1.125rem;
         }
+
+        /* Styles de la sidebar admin */
+        .admin-sidebar {
+            background-color: #1e293b;
+            width: 64px;
+            height: 100vh;
+            position: fixed;
+            right: 0;
+            top: 0;
+            padding: 16px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 50;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-nav-item {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 4px 0;
+            border-radius: 12px;
+            color: #94a3b8;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .admin-nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .admin-nav-item.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .admin-nav-item .tooltip {
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #1e293b;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+            z-index: 100;
+        }
+
+        .admin-nav-item:hover .tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .admin-content {
+            margin-right: 64px;
+            padding: 24px;
+            min-height: 100vh;
+        }
     </style>
 </head>
 <body>
     {% if user.is_authenticated and user.is_staff %}
-    <!-- Menu d'administration -->
-    <div class="admin-navbar border-b border-gray-200" x-data="{ open: false }">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <span class="admin-title">Administration FLOW SMS</span>
-                    </div>
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="{% url 'user:admin_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm">
-                            <i class="fas fa-chart-line mr-2"></i>
-                            Tableau de bord
-                        </a>
-                        <a href="{% url 'user:admin_user_list' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_user_list' %}active{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm">
-                            <i class="fas fa-users mr-2"></i>
-                            Utilisateurs
-                        </a>
-                        <a href="{% url 'user:admin_transaction_list' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_transaction_list' %}active{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm">
-                            <i class="fas fa-exchange-alt mr-2"></i>
-                            Transactions
-                        </a>
-                        {% if user.is_superuser %}
-                        <a href="{% url 'user:sender_id_admin_list' %}" class="nav-link {% if request.resolver_match.url_name == 'sender_id_admin_list' %}active{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm">
-                            <i class="fas fa-id-card mr-2"></i>
-                            Sender IDs
-                        </a>
-                        <a href="{% url 'user:promo_code_admin' %}" class="nav-link {% if request.resolver_match.url_name == 'promo_code_admin' %}active{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm">
-                            <i class="fas fa-tags mr-2"></i>
-                            Codes promo
-                        </a>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="-mr-2 flex items-center sm:hidden">
-                    <button @click="open = !open" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-orange">
-                        <span class="sr-only">Ouvrir le menu</span>
-                        <i class="fas fa-bars" x-show="!open"></i>
-                        <i class="fas fa-times" x-show="open"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Menu mobile -->
-        <div class="sm:hidden" x-show="open" @click.away="open = false">
-            <div class="pt-2 pb-3 space-y-1 bg-white shadow-lg rounded-b-lg">
-                <a href="{% url 'user:admin_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %} block px-3 py-2 text-base">
-                    <i class="fas fa-chart-line mr-2"></i>
-                    Tableau de bord
-                </a>
-                <a href="{% url 'user:admin_user_list' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_user_list' %}active{% endif %} block px-3 py-2 text-base">
-                    <i class="fas fa-users mr-2"></i>
-                    Utilisateurs
-                </a>
-                <a href="{% url 'user:admin_transaction_list' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_transaction_list' %}active{% endif %} block px-3 py-2 text-base">
-                    <i class="fas fa-exchange-alt mr-2"></i>
-                    Transactions
-                </a>
-                {% if user.is_superuser %}
-                <a href="{% url 'user:sender_id_admin_list' %}" class="nav-link {% if request.resolver_match.url_name == 'sender_id_admin_list' %}active{% endif %} block px-3 py-2 text-base">
-                    <i class="fas fa-id-card mr-2"></i>
-                    Sender IDs
-                </a>
-                <a href="{% url 'user:promo_code_admin' %}" class="nav-link {% if request.resolver_match.url_name == 'promo_code_admin' %}active{% endif %} block px-3 py-2 text-base">
-                    <i class="fas fa-tags mr-2"></i>
-                    Codes promo
-                </a>
-                {% endif %}
-            </div>
-        </div>
+    <!-- Sidebar d'administration -->
+    <div class="admin-sidebar">
+        {% if user.is_superuser %}
+        <a href="{% url 'user:promo_code_admin' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'promo_code_admin' %}active{% endif %}">
+            <i class="fas fa-tags"></i>
+            <span class="tooltip">Codes promo</span>
+        </a>
+        <a href="{% url 'user:sender_id_admin_list' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'sender_id_admin_list' %}active{% endif %}">
+            <i class="fas fa-id-card"></i>
+            <span class="tooltip">Sender IDs</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'user:admin_transaction_list' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_transaction_list' %}active{% endif %}">
+            <i class="fas fa-exchange-alt"></i>
+            <span class="tooltip">Transactions</span>
+        </a>
+        <a href="{% url 'user:admin_user_list' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_user_list' %}active{% endif %}">
+            <i class="fas fa-users"></i>
+            <span class="tooltip">Utilisateurs</span>
+        </a>
+        <a href="{% url 'user:admin_dashboard' %}" class="admin-nav-item {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+            <i class="fas fa-chart-line"></i>
+            <span class="tooltip">Tableau de bord</span>
+        </a>
     </div>
     {% endif %}
 
@@ -523,7 +564,7 @@
         {% endif %}
 
         <!-- Contenu principal -->
-        <main class="main-content {% if user.is_authenticated %}with-sidebar{% endif %}" id="main-content">
+        <main class="main-content {% if user.is_authenticated %}with-sidebar{% endif %} {% if user.is_authenticated and user.is_staff %}with-admin{% endif %}" id="main-content">
             {% block content %}{% endblock %}
         </main>
     </div>
